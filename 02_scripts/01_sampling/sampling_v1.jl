@@ -1,18 +1,19 @@
 using JSON
 using LatinHypercubeSampling
+using DelimitedFiles
 
 # Load JSON file 
 json_dir = "01_data/parameter_ranges"
 json_file = "geometrical_sampling_v1.json"
 
 # Sample output
-sample_amount = 100
+num_samples = 100
 output_dir = "01_data/parameter_files/geometrical_samples/v1/"
 
 json_file = joinpath(json_dir, json_file)
 
 @info("File $json_file will be processed for sample generation...")
-@info("$sample_amount samples will be saved in $output_dir...")
+@info("$num_samples samples will be saved in $output_dir...")
 
 # Function to load and parse the JSON file
 function load_parameters(file_path::String)
@@ -61,13 +62,77 @@ end
 count_parameters(fixed_params, variable_params)
 
 # Calculate the number of variable parameters
-total_variable_params = sum(length(v) for v in values(variable_params))
+num_variables = sum(length(v) for v in values(variable_params))
 
-@info("\nSamples with $total_variable_params variable parameters will be generated through Latin Hypercube Sampling...")
+@info("Samples with $num_variables variable parameters will be generated through Latin Hypercube Sampling...")
 
 
 # Create now directories for each sample
-for i in 1:sample_amount
+for i in 1:num_samples
     dir_name = joinpath(output_dir, lpad(i, 3, '0'))
     mkpath(dir_name)
 end
+
+# Generate LHS samples in normalized space [0, 1] using total_variable_params and num_samples
+lhs_samples = randomLHC(num_samples, num_variables)
+lhs_samples_normalized = lhs_samples ./ num_samples
+
+# # Save the normalized samples to a text file and define path
+normalized_file_path = joinpath(output_dir, "_lhs_samples_normalized.txt")
+writedlm(normalized_file_path, lhs_samples_normalized)
+
+# Extract variable ranges from the variable_params dictionary
+variable_ranges = Vector{Tuple{Float64, Float64}}()
+for category in keys(variable_params)
+    for (param, range) in variable_params[category]
+        if isa(range, Array) && length(range) == 2
+            push!(variable_ranges, (range[1], range[2]))
+        else
+            error("Invalid range format for parameter $param. Expected a 2-element array.")
+        end
+    end
+end
+
+# Scale the normalized samples to the actual variable ranges
+scaled_samples = scaleLHC(lhs_samples_normalized, variable_ranges)
+
+# # Save the scaled samples to a text file and define path
+scaled_file_path = joinpath(output_dir, "_lhs_samples_scaled.txt")
+writedlm(scaled_file_path, scaled_samples)
+
+@info("Normalized and scaled LHS samples saved to $normalized_file_path and $scaled_file_path.")
+
+
+
+# Function to map the scaled samples back to the JSON structure and save
+function save_sampled_parameters(fixed_params, variable_params, scaled_samples, num_samples, output_dir)
+    sample_index = 1
+    for i in 1:num_samples
+        # Create a copy of the fixed parameters
+        sampled_params = deepcopy(fixed_params)
+        
+        # Map the scaled values to the corresponding parameters
+        variable_index = 1
+        for category in keys(variable_params)
+            for param in keys(variable_params[category])
+                sampled_params[category][param] = scaled_samples[sample_index, variable_index]
+                variable_index += 1
+            end
+        end
+        
+        # Define the directory and file name
+        sample_dir = joinpath(output_dir, lpad(i, 3, '0'))
+        sample_file = joinpath(sample_dir, "parameters.json")
+        
+        # Save the JSON structure with pretty printing
+        open(sample_file, "w") do io
+            JSON.print(io, sampled_params, 4)  # Pass the indent value directly
+        end
+        
+        sample_index += 1
+    end
+end
+
+# Save each sample's parameters to its corresponding directory
+save_sampled_parameters(fixed_params, variable_params, scaled_samples, num_samples, output_dir)
+@info("Sampled parameters saved to individual directories with proper formatting.")
