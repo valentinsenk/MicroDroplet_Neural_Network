@@ -1,24 +1,32 @@
-### These imports are for the log-file ###
+#################################################
 import logging
 import sys
 from datetime import datetime
 import os
+import json
 from abaqus import session
 #################################################
 
-### --- ###
-inpfile = 'ell3-0'
-### --- ###
+# Directory for the current sample (assuming the correct path is set via the slurm bash-script)
+sample_dir = os.getcwd()
+
+# define inpfilename 
+inpfile = 'lhs_' + os.path.basename(sample_dir)
+
+# Load parameters from JSON file in the current directory
+json_file_path = os.path.join(sample_dir, "parameters.json")
+with open(json_file_path, 'r') as json_file:
+    params = json.load(json_file)
 
 ### --- Setting up log-file --- ###
 
-log_filename = inpfile + '_model_generation.log'
+log_filename = os.path.join(sample_dir, inpfile + '_model_generation.log')
 
 logging.basicConfig(filename=log_filename, level=logging.INFO, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-#script_name = os.path.basename(sys.argv[0]) if sys.argv[0] else '-script name not available-'
-script_name = '01_build_model.py'
+### this scripts name
+script_name = '01_build_model_v1.py'
 
 # Redirect stdout to log file
 class Logger:
@@ -69,30 +77,28 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import ellipkinc, ellipeinc
 import math
-#################################################
+##################################################
 
 ### INPUT PARAMETERS ###
 
 #### The following parameters describe the DROPLET geometry ####
-h = 0.081  # bead height in mm (=Droplet diameter / 2)
-L = 0.220  # embedded length in mm
-r = 0.0105 #0.0105  # fiber radius in mm (=Fiber diameter / 2)
-o = 25.7 #25.7  # contact angle in degrees (=in Pantalonis paper this is probaly 90deg minus contact angle)
-
+h = params['geometrical_parameters']['droplet_diameter']/2  # bead height in mm (=Droplet diameter / 2)
+L = params['geometrical_parameters']['ratio_droplet_embedded_length']*h  # embedded length in mm
+r = params['geometrical_parameters']['fiber_diameter']/2 #0.0105  # fiber radius in mm (=Fiber diameter / 2)
+o = params['geometrical_parameters']['contact_angle'] #25.7  # contact angle in degrees (=in Pantalonis paper this is probaly 90deg minus contact angle)
 l_free = 2*r #3000 # free fiber length in mm
 l_end = L # length of fiber from loose end to the end of the droplet
-
-ell = 3.0 #1.5 #crosssection ratio of elliptical fiber (define 1.0001 for "circle") 
+ell = params['geometrical_parameters']['elliptical_fiber_ratio'] #1.5 #crosssection ratio of elliptical fiber (define 1.0001 for "circle") 
 ### DON'T USE CIRCLE - no definitions here! (JUST MAKE SIMILAR SIZED ELLIPSE-EDGES)
 
 # rotation of droplet + fiber
-rot = 0.0 #0.0, 30.0, 45.0, 60.0 rotation of elliptical fiber 
+rot = params['geometrical_parameters']['fiber_rotation'] #0.0, 30.0, 45.0, 60.0 rotation of elliptical fiber 
 
 ### CHOOSE BLADE GEOMETRY
 blade = 0 #blade 0: 20 degrees angle, 1:flat, 2: rounded with fillet radius=0.005
 
 ### Blade distance (ratio) to (longer, elliptical) fiber diameter (=microvise gap)###
-b = r + r*ell #4*r*ell  #1.5 * ell * r #e.g. 1.2, 1.5, 2, 5 * (ell*r)
+b = params['geometrical_parameters']['blade_distance_ratio_to_fiber_diameter']*r*ell #r + r*ell #4*r*ell  #1.5 * ell * r #e.g. 1.2, 1.5, 2, 5 * (ell*r)
 
 ### Mesh Seeds: 
 b_seed = 0.0040 # Finest Seed for Blades in mm #Choose e.g. 0.002 for finest, 0.008 for most coarse
