@@ -11,7 +11,7 @@
       "droplet_diameter": 0.162,
       "ratio_droplet_embedded_length": 1.36,
       "contact_angle": 25.7,
-      "blade_distance_ratio_to_fiber_diameter": 2.0,
+      "blade_distance": 0.042,
       "elliptical_fiber_ratio": 1.0,
       "fiber_rotation" : 0
     }
