@@ -5,7 +5,7 @@
 #SBATCH --array=1-100%20 #submit job array with a maximum of 20 parallel jobs
 #SBATCH --job-name=build_abq_model # Job Name
 #SBATCH --time=01:00:00
-#SBATCH --output=slurm-%j--%x.log  # Standard output and error log
+#SBATCH --output=/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/geometrical_samples/v1/%A_%a/slurm-%A_%a--%x.log  # Standard output and error log
 ##SBATCH --licenses="abaqus_teaching@2501@l4.zserv.tuwien.ac.at":6
 
 ### current master root where you are in should be:
@@ -41,6 +41,7 @@ fi
 wait
 
 # Record end time and calculate elapsed time
+echo "Stop time BUILD ABQ MODEL: $(date -Isec)"
 stop_model=$(date +%s)
 elapsed_model=$(echo "scale=2; ($stop_model - $start_model) / 3600" | bc)
 
