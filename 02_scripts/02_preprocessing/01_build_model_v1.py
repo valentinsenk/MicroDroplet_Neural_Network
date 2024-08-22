@@ -81,6 +81,8 @@ import math
 
 ### INPUT PARAMETERS ###
 
+### ---- Here are only geometrical parameters processed, mechanical parameters are changed in a next step via JULIA! ---- ###
+
 #### The following parameters describe the DROPLET geometry ####
 h = params['geometrical_parameters']['droplet_diameter']/2  # bead height in mm (=Droplet diameter / 2)
 L = params['geometrical_parameters']['ratio_droplet_embedded_length']*h  # embedded length in mm
@@ -98,13 +100,14 @@ rot = params['geometrical_parameters']['fiber_rotation'] #0.0, 30.0, 45.0, 60.0 
 blade = 0 #blade 0: 20 degrees angle, 1:flat, 2: rounded with fillet radius=0.005
 
 ### Blade distance (ratio) to (longer, elliptical) fiber diameter (=microvise gap)###
-b = params['geometrical_parameters']['blade_distance_ratio_to_fiber_diameter']*r*ell #r + r*ell #4*r*ell  #1.5 * ell * r #e.g. 1.2, 1.5, 2, 5 * (ell*r)
+b = params['geometrical_parameters']['blade_distance']/2 #r + r*ell #4*r*ell  #1.5 * ell * r #e.g. 1.2, 1.5, 2, 5 * (ell*r)
 
 ### Mesh Seeds: 
 b_seed = 0.0040 # Finest Seed for Blades in mm #Choose e.g. 0.002 for finest, 0.008 for most coarse
 fd_seed = 2 # Choose between 1 - 4 #1 = finest seed for fiber-droplet system
+
 #Friction coeff between blade-droplet or fiber-droplet
-fric = 0.3
+fric = 0.3 #### this will be changed after processing with JULIA script and has no effect here!
 
 ### --- log file --- ###
 
