@@ -96,6 +96,7 @@ ell = params['geometrical_parameters']['elliptical_fiber_ratio'] #1.5 #crosssect
 # rotation of droplet + fiber
 rot = params['geometrical_parameters']['fiber_rotation'] #0.0, 30.0, 45.0, 60.0 rotation of elliptical fiber 
 
+
 ### CHOOSE BLADE GEOMETRY
 blade = 0 #blade 0: 20 degrees angle, 1:flat, 2: rounded with fillet radius=0.005
 
