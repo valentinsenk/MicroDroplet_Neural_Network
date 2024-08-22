@@ -77,7 +77,7 @@ end
 lhs_samples = randomLHC(num_samples, num_variables)
 lhs_samples_normalized = lhs_samples ./ num_samples
 
-# # Save the normalized samples to a text file and define path
+# Save the normalized samples to a text file
 normalized_file_path = joinpath(output_dir, "_lhs_samples_normalized.txt")
 writedlm(normalized_file_path, lhs_samples_normalized)
 
@@ -96,12 +96,34 @@ end
 # Scale the normalized samples to the actual variable ranges
 scaled_samples = scaleLHC(lhs_samples_normalized, variable_ranges)
 
-# # Save the scaled samples to a text file and define path
+
+# --- If blade_distance is varaible, adapt ranges according to other variable geometrical parameters --- #
+if haskey(variable_params["geometrical_parameters"], "blade_distance")
+    blade_index = findfirst(==( "blade_distance"), collect(keys(variable_params["geometrical_parameters"])))
+
+    for i in 1:num_samples
+        fiber_diameter = scaled_samples[i, findfirst(==("fiber_diameter"), collect(keys(variable_params["geometrical_parameters"])))]
+        elliptical_fiber_ratio = scaled_samples[i, findfirst(==("elliptical_fiber_ratio"), collect(keys(variable_params["geometrical_parameters"])))]
+        fiber_rotation = scaled_samples[i, findfirst(==("fiber_rotation"), collect(keys(variable_params["geometrical_parameters"])))]
+        droplet_diameter = scaled_samples[i, findfirst(==("droplet_diameter"), collect(keys(variable_params["geometrical_parameters"])))]
+
+        # Calculate min and max blade distance
+        min_blade_distance = fiber_diameter * sqrt(elliptical_fiber_ratio^2 * cosd(fiber_rotation)^2 + sind(fiber_rotation)^2)
+        max_blade_distance = droplet_diameter
+
+        # Rescale the normalized LHS value to the new range
+        normalized_value = lhs_samples_normalized[i, blade_index]
+        scaled_samples[i, blade_index] = min_blade_distance + normalized_value * (max_blade_distance - min_blade_distance)
+    end
+end
+# ------------------------------------------------------------------------------------------------------ #
+
+
+# Save the scaled samples to a text file and define path
 scaled_file_path = joinpath(output_dir, "_lhs_samples_scaled.txt")
 writedlm(scaled_file_path, scaled_samples)
 
 @info("Normalized and scaled LHS samples saved to $normalized_file_path and $scaled_file_path.")
-
 
 
 # Function to map the scaled samples back to the JSON structure and save
