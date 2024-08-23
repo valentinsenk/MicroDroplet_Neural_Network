@@ -82,23 +82,23 @@ import math
 ### INPUT PARAMETERS ###
 
 ### Geometrical parameters for fiber-droplet system and blades ###
-h = params['geometrical_parameters']['droplet_diameter']/2  # bead height in mm (=Droplet diameter / 2)
-L = params['geometrical_parameters']['ratio_droplet_embedded_length']*2*h  # embedded length in mm
-r = params['geometrical_parameters']['fiber_diameter']/2 #0.0105  # fiber radius in mm (=Fiber diameter / 2)
-o = params['geometrical_parameters']['contact_angle'] #25.7  # contact angle in degrees (=in Pantalonis paper this is probaly 90deg minus contact angle)
-ell = params['geometrical_parameters']['elliptical_fiber_ratio'] #1.5 #crosssection ratio of elliptical fiber (define 1.0001 for "circle") 
-rot = params['geometrical_parameters']['fiber_rotation'] #0.0, 30.0, 45.0, 60.0 rotation of elliptical fiber 
-b = params['geometrical_parameters']['blade_distance']/2 #r + r*ell #4*r*ell  #1.5 * ell * r #e.g. 1.2, 1.5, 2, 5 * (ell*r)
+h = round(params['geometrical_parameters']['droplet_diameter']/2, 4)  # bead height in mm (=Droplet diameter / 2)
+L = round(params['geometrical_parameters']['ratio_droplet_embedded_length']*2*h, 4)  # embedded length in mm
+r = round(params['geometrical_parameters']['fiber_diameter']/2, 4) #0.0105  # fiber radius in mm (=Fiber diameter / 2)
+o = round(params['geometrical_parameters']['contact_angle'], 2) #25.7  # contact angle in degrees (=in Pantalonis paper this is probaly 90deg minus contact angle)
+ell = round(params['geometrical_parameters']['elliptical_fiber_ratio'], 2) #1.5 #crosssection ratio of elliptical fiber (define 1.0001 for "circle") 
+rot = round(params['geometrical_parameters']['fiber_rotation'], 1) #0.0, 30.0, 45.0, 60.0 rotation of elliptical fiber 
+b = round(params['geometrical_parameters']['blade_distance']/2, 4) #r + r*ell #4*r*ell  #1.5 * ell * r #e.g. 1.2, 1.5, 2, 5 * (ell*r)
 blade = 0 #blade 0: 20 degrees angle, 1:flat, 2: rounded with fillet radius=0.005
-l_free = 2*r #3000 # free fiber length in mm
-l_end = L # length of fiber from loose end to the end of the droplet
+l_free = round(2*r, 4) #3000 # free fiber length in mm
+l_end = round(L, 4) # length of fiber from loose end to the end of the droplet
 
 ### Some mechanical parameters for fiber-droplet system ###
-GI = params['mechanical_parameters']['GI'] #interface normal energy
-GII = params['mechanical_parameters']['GII,GIII'] #interface shear energy
-tI = params['mechanical_parameters']['tI=tII=tIII']*9.74 #interface strength
-interface_fric = params['mechanical_parameters']['interface_friction']#friction const. between fiber and droplet
-blade_fric = params['mechanical_parameters']['blade_friction']#friction between blade and droplet
+GI = round(params['mechanical_parameters']['GI'], 4) #interface normal energy
+GII = round(params['mechanical_parameters']['GII,GIII'], 4) #interface shear energy
+tI = round(params['mechanical_parameters']['tI=tII=tIII']*9.74, 4) #interface strength
+interface_fric = round(params['mechanical_parameters']['interface_friction'], 2)#friction const. between fiber and droplet
+blade_fric = round(params['mechanical_parameters']['blade_friction'], 2)#friction between blade and droplet
 
 ### Mesh Parameters ###
 b_seed = 0.0080 # Finest Seed for Blades in mm #Choose e.g. 0.002 for finest, 0.008 for most coarse
@@ -1232,8 +1232,8 @@ mdb.models['Model-1'].interactionProperties['COHESIVE'].CohesiveBehavior(
 mdb.models['Model-1'].interactionProperties['COHESIVE'].NormalBehavior(
     pressureOverclosure=HARD, allowSeparation=ON, 
     constraintEnforcementMethod=DEFAULT)
-mdb.models['Model-1'].interactionProperties['COHESIVE'].Damage(initTable=((
-    tI, tI, tI), ), useEvolution=ON, evolutionType=ENERGY, mixedModeBehavior=POWER, 
+mdb.models['Model-1'].interactionProperties['COHESIVE'].Damage(initTable=((tI, tI, tI), ),
+    useEvolution=ON, evolutionType=ENERGY, mixedModeBehavior=POWER_LAW, 
     power=1.0, evolTable=((GI, GII, GII), ), useStabilization=ON, viscosityCoef=1e-05)
 #: The interaction property "COHESIVE" has been created.
 mdb.models['Model-1'].ContactStd(name='GENERAL_CONTACT', 
