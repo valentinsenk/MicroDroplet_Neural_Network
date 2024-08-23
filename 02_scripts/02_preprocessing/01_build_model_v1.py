@@ -94,8 +94,8 @@ l_free = round(2*r, 4) #3000 # free fiber length in mm
 l_end = round(L, 4) # length of fiber from loose end to the end of the droplet
 
 ### Some mechanical parameters for fiber-droplet system ###
-GI = round(params['mechanical_parameters']['GI'], 4) #interface normal energy
-GII = round(params['mechanical_parameters']['GII,GIII'], 4) #interface shear energy
+G_modeI = round(params['mechanical_parameters']['GI'], 4) #interface normal energy
+G_modeII = round(params['mechanical_parameters']['GII,GIII'], 4) #interface shear energy
 tI = round(params['mechanical_parameters']['tI=tII=tIII']*9.74, 4) #interface strength
 interface_fric = round(params['mechanical_parameters']['interface_friction'], 2)#friction const. between fiber and droplet
 blade_fric = round(params['mechanical_parameters']['blade_friction'], 2)#friction between blade and droplet
@@ -1234,7 +1234,7 @@ mdb.models['Model-1'].interactionProperties['COHESIVE'].NormalBehavior(
     constraintEnforcementMethod=DEFAULT)
 mdb.models['Model-1'].interactionProperties['COHESIVE'].Damage(initTable=((tI, tI, tI), ),
     useEvolution=ON, evolutionType=ENERGY, mixedModeBehavior=POWER_LAW, 
-    power=1.0, evolTable=((GI, GII, GII), ), useStabilization=ON, viscosityCoef=1e-05)
+    power=1.0, evolTable=((G_modeI, G_modeII, G_modeII), ), useStabilization=ON, viscosityCoef=1e-05)
 #: The interaction property "COHESIVE" has been created.
 mdb.models['Model-1'].ContactStd(name='GENERAL_CONTACT', 
     createStepName='Initial')
