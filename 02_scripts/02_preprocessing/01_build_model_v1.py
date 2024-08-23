@@ -81,38 +81,33 @@ import math
 
 ### INPUT PARAMETERS ###
 
-### ---- Here are only geometrical parameters processed, mechanical parameters are changed in a next step via JULIA! ---- ###
-
-#### The following parameters describe the DROPLET geometry ####
+### Geometrical parameters for fiber-droplet system and blades ###
 h = params['geometrical_parameters']['droplet_diameter']/2  # bead height in mm (=Droplet diameter / 2)
 L = params['geometrical_parameters']['ratio_droplet_embedded_length']*2*h  # embedded length in mm
 r = params['geometrical_parameters']['fiber_diameter']/2 #0.0105  # fiber radius in mm (=Fiber diameter / 2)
 o = params['geometrical_parameters']['contact_angle'] #25.7  # contact angle in degrees (=in Pantalonis paper this is probaly 90deg minus contact angle)
+ell = params['geometrical_parameters']['elliptical_fiber_ratio'] #1.5 #crosssection ratio of elliptical fiber (define 1.0001 for "circle") 
+rot = params['geometrical_parameters']['fiber_rotation'] #0.0, 30.0, 45.0, 60.0 rotation of elliptical fiber 
+b = params['geometrical_parameters']['blade_distance']/2 #r + r*ell #4*r*ell  #1.5 * ell * r #e.g. 1.2, 1.5, 2, 5 * (ell*r)
+blade = 0 #blade 0: 20 degrees angle, 1:flat, 2: rounded with fillet radius=0.005
 l_free = 2*r #3000 # free fiber length in mm
 l_end = L # length of fiber from loose end to the end of the droplet
-ell = params['geometrical_parameters']['elliptical_fiber_ratio'] #1.5 #crosssection ratio of elliptical fiber (define 1.0001 for "circle") 
-### DON'T USE CIRCLE - no definitions here! (JUST MAKE SIMILAR SIZED ELLIPSE-EDGES)
 
-# rotation of droplet + fiber
-rot = params['geometrical_parameters']['fiber_rotation'] #0.0, 30.0, 45.0, 60.0 rotation of elliptical fiber 
+### Some mechanical parameters for fiber-droplet system ###
+GI = params['mechanical_parameters']['GI'] #interface normal energy
+GII = params['mechanical_parameters']['GII=GIII'] #interface shear energy
+tI = params['mechanical_parameters']['tI=tII=tIII']#interface strength
+interface_fric = params['mechanical_parameters']['interface_friction']#friction const. between fiber and droplet
+blade_fric = params['mechanical_parameters']['blade_friction']#friction between blade and droplet
 
-
-### CHOOSE BLADE GEOMETRY
-blade = 0 #blade 0: 20 degrees angle, 1:flat, 2: rounded with fillet radius=0.005
-
-### Blade distance (ratio) to (longer, elliptical) fiber diameter (=microvise gap)###
-b = params['geometrical_parameters']['blade_distance']/2 #r + r*ell #4*r*ell  #1.5 * ell * r #e.g. 1.2, 1.5, 2, 5 * (ell*r)
-
-### Mesh Seeds: 
+### Mesh Parameters ###
 b_seed = 0.0080 # Finest Seed for Blades in mm #Choose e.g. 0.002 for finest, 0.008 for most coarse
 fd_seed = 3 # Choose between 1 - 4 #1 = finest seed for fiber-droplet system
-
-#Friction coeff between blade-droplet or fiber-droplet
-fric = 0.3 #### this will be changed after processing with JULIA script and has no effect here!
 
 ### --- log file --- ###
 
 logging.info("Sript Parameters ")
+logging.info(f"-----------------------------------------")
 # Log input parameters
 logging.info(f"h = {h} mm #bead height")
 logging.info(f"L = {L} mm #embedded length")
@@ -124,9 +119,15 @@ logging.info(f"ell = {ell} #crosssection ratio of elliptical fiber")
 logging.info(f"rot = {rot} degrees #0.0, 30.0, 45.0, 60.0 rotation of elliptical fiber")
 logging.info(f"blade = no. {blade} #blade type (blade 0: 20 degrees angle, 1:flat, 2: rounded with fillet radius=0.005)")
 logging.info(f"b = {b} mm #blade distance (ratio) to (longer, elliptical) fiber diameter (times 2 would be blade to blade)")
+logging.info(f"-----------------------------------------")
+logging.info(f"GI = {GI} N/mm #")
+logging.info(f"GII = {GII} N/mm #")
+logging.info(f"tI = tII = tIII = {tI} N/mm² #")
+logging.info(f"interface_fric = {interface_fric} #coulomb friction parameter")
+logging.info(f"blade_fric = {blade_fric} #coulomb friction parameter")
+logging.info(f"-----------------------------------------")
 logging.info(f"b_seed = {b_seed} mm #finest mesh seed for blades")
 logging.info(f"fd_seed = no. {fd_seed} #finest mesh seed for fiber-droplet system")
-logging.info(f"fric = {fric} #coulomb friction parameter")
 
 print(f"")
 
@@ -1217,14 +1218,14 @@ mdb.models['Model-1'].interactionProperties['CONTACT'].NormalBehavior(
 mdb.models['Model-1'].interactionProperties['CONTACT'].TangentialBehavior(
     formulation=PENALTY, directionality=ISOTROPIC, slipRateDependency=OFF, 
     pressureDependency=OFF, temperatureDependency=OFF, dependencies=0, table=((
-    fric, ), ), shearStressLimit=None, maximumElasticSlip=FRACTION, 
+    blade_fric, ), ), shearStressLimit=None, maximumElasticSlip=FRACTION, 
     fraction=0.005, elasticSlipStiffness=None)
 #: The interaction property "CONTACT" has been created.
 mdb.models['Model-1'].ContactProperty('COHESIVE')
 mdb.models['Model-1'].interactionProperties['COHESIVE'].TangentialBehavior(
     formulation=PENALTY, directionality=ISOTROPIC, slipRateDependency=OFF, 
     pressureDependency=OFF, temperatureDependency=OFF, dependencies=0, table=((
-    fric, ), ), shearStressLimit=None, maximumElasticSlip=FRACTION, 
+    interface_fric, ), ), shearStressLimit=None, maximumElasticSlip=FRACTION, 
     fraction=0.005, elasticSlipStiffness=None)
 mdb.models['Model-1'].interactionProperties['COHESIVE'].CohesiveBehavior(
     defaultPenalties=OFF, table=((500000.0, 50000.0, 50000.0), ))
@@ -1232,8 +1233,8 @@ mdb.models['Model-1'].interactionProperties['COHESIVE'].NormalBehavior(
     pressureOverclosure=HARD, allowSeparation=ON, 
     constraintEnforcementMethod=DEFAULT)
 mdb.models['Model-1'].interactionProperties['COHESIVE'].Damage(initTable=((
-    12.74, 12.74, 12.74), ), useEvolution=ON, evolutionType=ENERGY, evolTable=(
-    (0.3, ), ), useStabilization=ON, viscosityCoef=1e-05)
+    tI, tI, tI), ), useEvolution=ON, evolutionType=ENERGY, mixedModeBehavior=POWER_LAW, 
+    power=1.0, evolTable=((GI, GII, GII), ), useStabilization=ON, viscosityCoef=1e-05)
 #: The interaction property "COHESIVE" has been created.
 mdb.models['Model-1'].ContactStd(name='GENERAL_CONTACT', 
     createStepName='Initial')
