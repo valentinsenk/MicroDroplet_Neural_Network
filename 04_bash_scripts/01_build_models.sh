@@ -40,6 +40,11 @@ fi
 # Wait for the Abaqus job to finish
 wait
 
+# Run the Julia script to clean and process the inp files
+/home/vsenk/bin/julia-1.8.1/bin/julia /home/vsenk/Droplet_Tests_FEA/01_neural_network_project/02_scripts/02_preprocessing/02_build_clean_inp_files_v1.jl
+
+wait
+
 # Record end time and calculate elapsed time
 echo "Stop time BUILD ABQ MODEL: $(date -Isec)"
 stop_model=$(date +%s)
