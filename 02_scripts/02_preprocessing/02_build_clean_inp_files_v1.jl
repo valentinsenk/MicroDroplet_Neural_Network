@@ -9,7 +9,7 @@ sample_dir = pwd()
 #extract the basename of the directory
 sample_basename = basename(sample_dir)
 
-inpfilename = "lhs_$sample_basename"
+inpfilename = "lhs_$sample_basename.inp"
 
 new_version = "_v1"
 
