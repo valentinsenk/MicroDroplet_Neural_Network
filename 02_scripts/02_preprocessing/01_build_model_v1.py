@@ -95,7 +95,7 @@ l_end = L # length of fiber from loose end to the end of the droplet
 
 ### Some mechanical parameters for fiber-droplet system ###
 GI = params['mechanical_parameters']['GI'] #interface normal energy
-GII = params['mechanical_parameters']['GII=GIII'] #interface shear energy
+GII = params['mechanical_parameters']['GII,GIII'] #interface shear energy
 tI = params['mechanical_parameters']['tI=tII=tIII']#interface strength
 interface_fric = params['mechanical_parameters']['interface_friction']#friction const. between fiber and droplet
 blade_fric = params['mechanical_parameters']['blade_friction']#friction between blade and droplet
