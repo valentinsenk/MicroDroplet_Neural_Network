@@ -1233,8 +1233,8 @@ mdb.models['Model-1'].interactionProperties['COHESIVE'].NormalBehavior(
     pressureOverclosure=HARD, allowSeparation=ON, 
     constraintEnforcementMethod=DEFAULT)
 mdb.models['Model-1'].interactionProperties['COHESIVE'].Damage(initTable=((tI, tI, tI), ),
-    useEvolution=ON, evolutionType=ENERGY, mixedModeBehavior=POWER_LAW, 
-    power=1.0, evolTable=((G_modeI, G_modeII, G_modeII), ), useStabilization=ON, viscosityCoef=1e-05)
+    useEvolution=ON, evolutionType=ENERGY, useMixedMode=ON, mixedModeType=POWER_LAW, 
+    exponent=1.0, evolTable=((G_modeI, G_modeII, G_modeII), ), useStabilization=ON, viscosityCoef=1e-05)
 #: The interaction property "COHESIVE" has been created.
 mdb.models['Model-1'].ContactStd(name='GENERAL_CONTACT', 
     createStepName='Initial')
