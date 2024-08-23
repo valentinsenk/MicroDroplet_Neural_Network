@@ -96,7 +96,7 @@ l_end = L # length of fiber from loose end to the end of the droplet
 ### Some mechanical parameters for fiber-droplet system ###
 GI = params['mechanical_parameters']['GI'] #interface normal energy
 GII = params['mechanical_parameters']['GII,GIII'] #interface shear energy
-tI = params['mechanical_parameters']['tI=tII=tIII']#interface strength
+tI = params['mechanical_parameters']['tI=tII=tIII']*9.74 #interface strength
 interface_fric = params['mechanical_parameters']['interface_friction']#friction const. between fiber and droplet
 blade_fric = params['mechanical_parameters']['blade_friction']#friction between blade and droplet
 
@@ -1233,7 +1233,7 @@ mdb.models['Model-1'].interactionProperties['COHESIVE'].NormalBehavior(
     pressureOverclosure=HARD, allowSeparation=ON, 
     constraintEnforcementMethod=DEFAULT)
 mdb.models['Model-1'].interactionProperties['COHESIVE'].Damage(initTable=((
-    tI, tI, tI), ), useEvolution=ON, evolutionType=ENERGY, mixedModeBehavior=POWER_LAW, 
+    tI, tI, tI), ), useEvolution=ON, evolutionType=ENERGY, mixedModeBehavior=POWER, 
     power=1.0, evolTable=((GI, GII, GII), ), useStabilization=ON, viscosityCoef=1e-05)
 #: The interaction property "COHESIVE" has been created.
 mdb.models['Model-1'].ContactStd(name='GENERAL_CONTACT', 
