@@ -3,9 +3,15 @@ using Printf
 using Logging
 using LoggingExtras
 
+#get the current working directory
+sample_dir = pwd()
 
-inpfilename = "ell3-0.inp"
-new_version = "_v2"
+#extract the basename of the directory
+sample_basename = basename(sample_dir)
+
+inpfilename = "lhs_$sample_basename"
+
+new_version = "_v1"
 
 # What are the Sets called?
 fiber_set = "Set-2" # Fiber-Set     #watch out for case-sensitivity
