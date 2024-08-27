@@ -10,6 +10,7 @@
 ####### variables #######
 comparisonfile='compare_results_v1'
 matlab_script_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/02_scripts/03_postprocessing/'
+root_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/mechanical_samples/v1'
 ##########################
 
 # Print running host
@@ -23,6 +24,7 @@ echo "##########################"
 # COMPARE WITH MATLAB
 /opt/MATLAB/R2023b/bin/matlab -nosplash > matlab_${SLURM_JOB_NAME}.log << EOF
 addpath('$matlab_script_dir')
+root_dir='$root_dir'
 $comparisonfile
 exit
 EOF

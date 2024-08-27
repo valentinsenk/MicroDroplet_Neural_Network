@@ -1,8 +1,5 @@
 close all
 
-% Define the root directory where the parameter directories are located
-root_dir = '/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/mechanical_samples/v1/';
-
 % Get the result folders
 result_folders = dir(fullfile(root_dir, '*_results'));
 
