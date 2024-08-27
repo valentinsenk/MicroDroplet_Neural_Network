@@ -1,15 +1,10 @@
-# get current working directory
-
 import os
-#os.environ['jobname']
-
-#jobname form shell-script or manually:
 import sys
-jobname = sys.argv[-1]
-#jobname = 'Seed04_v4'
 
+#import jobname
+jobname = sys.argv[-1]
 dir = os.getcwd()
-jobdir = (dir + '\\' + jobname + '.odb')
+jobdir = (dir + '\\' + jobname)
 
 #some abaqus import stuff...
 from abaqus import *
