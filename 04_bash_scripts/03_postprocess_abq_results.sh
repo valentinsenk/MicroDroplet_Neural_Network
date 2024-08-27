@@ -2,7 +2,7 @@
 #SBATCH --nodes=1  # Run all processes on a single node
 #SBATCH --nodelist=node04.imws.tuwien.ac.at #use the new node
 #SBATCH --ntasks=2  # Use 2 threads (=1 cpu core)
-#SBATCH --array=1-100%20 #submit job array with a maximum of 20 parallel jobs
+#SBATCH --array=32-34%20 #submit job array with a maximum of 20 parallel jobs
 #SBATCH --job-name=postprocess_abq_results # Job Name
 #SBATCH --time=01:00:00
 ##SBATCH --output=/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/geometrical_samples/v1/%03a/slurm-%A_%a--%x.log  # Standard output and error log
