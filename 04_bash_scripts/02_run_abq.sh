@@ -3,7 +3,7 @@
 #SBATCH --nodelist=node04.imws.tuwien.ac.at #use the new node
 #SBATCH --ntasks=4  # Use 4 threads (=2 cpu core)
 #SBATCH --array=1-100%20 #submit job array with a maximum of 20 parallel jobs
-#SBATCH --job-name=run_geom_samples # Job Name
+#SBATCH --job-name=run_mech_samples # Job Name
 #SBATCH --time=1-00:00:00
 ##SBATCH --output=/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/geometrical_samples/v1/%03a/slurm-%A_%a--%x.log  # Standard output and error log
 #SBATCH --output=/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/mechanical_samples/v1/%03a/slurm-%A_%a--%x.log  # Standard output and error log
