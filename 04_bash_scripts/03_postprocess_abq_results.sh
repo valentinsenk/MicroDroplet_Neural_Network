@@ -36,11 +36,11 @@ wait
 
 # MAKE SOME FURTHER POSTPROCESSING AND PLOTS WITH MATLAB
 matlab_stresses='process_energy_data_v1'
-matlab_energies='porcess_force_disp_data_v1'
+matlab_energies='process_force_disp_data_v1'
 
 /opt/MATLAB/R2023b/bin/matlab -nosplash > matlab_${SLURM_JOB_NAME}.log << EOF
 addpath('/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/02_scripts/03_postprocessing/')
-jobname=$output_file
+jobname='$output_file'
 inc=10
 $matlab_stresses
 $matlab_energies
