@@ -20,3 +20,10 @@
 
 *.exception
 *.SMABulk
+
+# Ignore everything in the _results folders
+*/*_results/**
+
+# Reinclude only the outputdata folder and its contents
+!*/outputdata/
+!*/outputdata/**
