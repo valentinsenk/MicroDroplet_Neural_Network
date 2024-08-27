@@ -1,4 +1,17 @@
 00_notes
 
-*.txt
-
+# Ignore all abaqus files from cluster and log files
+*.rpy
+*.rpy.*
+*.inp
+*.env
+*.cae
+*.jnl
+*.log
+*.com
+*.dat
+*inp
+*.msg
+*.odb
+*.prt
+*.sta
