@@ -15,3 +15,8 @@
 *.odb
 *.prt
 *.sta
+
+#Also exclude exception files and other abq waste
+
+*.exception
+*.SMABulk
