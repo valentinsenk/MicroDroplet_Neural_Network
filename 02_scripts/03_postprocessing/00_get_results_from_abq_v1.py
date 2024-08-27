@@ -4,7 +4,7 @@ import sys
 #import jobname
 jobname = sys.argv[-1]
 dir = os.getcwd()
-jobdir = (dir + '\\' + jobname)
+jobdir = (dir + '\\' + jobname + '.odb')
 
 #some abaqus import stuff...
 from abaqus import *

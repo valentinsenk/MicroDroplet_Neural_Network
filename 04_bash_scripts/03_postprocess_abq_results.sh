@@ -7,7 +7,7 @@
 #SBATCH --time=01:00:00
 ##SBATCH --output=/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/geometrical_samples/v1/%03a/slurm-%A_%a--%x.log  # Standard output and error log
 #SBATCH --output=/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/mechanical_samples/v1/%03a/slurm-%A_%a--%x.log  # Standard output and error log
-##SBATCH --licenses="abaqus_teaching@2501@l4.zserv.tuwien.ac.at":6
+#SBATCH --licenses="abaqus_teaching@2501@l4.zserv.tuwien.ac.at":6
 
 ### current master root where you are in should be:
 # /home/vsenk/Droplet_Tests_FEA/01_neural_network_project/
@@ -21,7 +21,7 @@ PARAM_DIR=$(printf "%03d" $SLURM_ARRAY_TASK_ID)
 cd $ROOT_DIR/$PARAM_DIR
 
 # Get the output file name based on the job array index and version
-output_file="lhs_${PARAM_DIR}_v1.odb"
+output_file="lhs_${PARAM_DIR}_v1"
 
 # Print running host
 hostname
@@ -40,7 +40,7 @@ matlab_energies='porcess_force_disp_data_v1'
 
 /opt/MATLAB/R2023b/bin/matlab -nosplash > matlab_${SLURM_JOB_NAME}.log << EOF
 addpath('/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/02_scripts/03_postprocessing/')
-jobname='lhs_${PARAM_DIR}_v1'
+jobname=$output_file
 inc=10
 $matlab_stresses
 $matlab_energies
