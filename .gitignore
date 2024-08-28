@@ -26,3 +26,7 @@
 *.png
 *.svg
 *.avi
+
+!_compare_allresults/*.svg
+!_compare_allresults/*.png
+!_compare_allresults/*.fig
