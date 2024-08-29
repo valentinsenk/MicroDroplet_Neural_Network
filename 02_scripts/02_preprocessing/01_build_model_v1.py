@@ -178,6 +178,15 @@ def bead_profile(h, r, L, o):
 x, y = bead_profile(h, r, L, o)
 ###
 
+######## FOR LATER IN THE SCRIPT: move blade and droplet closer together in the y-direction
+# to avoid too many increments with no force before touching
+x_filtered = x[x < b]
+closest_x = np.max(x_filtered)
+closest_index = np.where(x == closest_x)[0][0]
+# Get the corresponding y-value
+blade_distance_y = y[closest_index]
+########
+
 ### DROPLET GEOMETRY (Part-1) ###
 ### open geometry / sketch editor in ABAQUS 
 #del mdb.models['Model-1'].sketches['__profile__'] ##eventual
@@ -307,8 +316,8 @@ def blade_assembly_translation():
     a.Instance(name='Part-3-2', part=p, dependent=ON)
     ##
     # translate to origin + embedded length / 2
-    a.translate(instanceList=('Part-3-1', ), vector=(0.0, L/2, -2.0))
-    a.translate(instanceList=('Part-3-2', ), vector=(0.0, L/2, -2.0))
+    a.translate(instanceList=('Part-3-1', ), vector=(0.0, blade_distance_y, -2.0))
+    a.translate(instanceList=('Part-3-2', ), vector=(0.0, blade_distance_y, -2.0))
     ##
     # mirror 1 blade instance
     a.rotate(instanceList=('Part-3-2', ), axisPoint=(0.0, 0.0, 0.0), 

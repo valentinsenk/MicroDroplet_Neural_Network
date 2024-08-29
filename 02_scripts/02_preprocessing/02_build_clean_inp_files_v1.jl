@@ -719,7 +719,7 @@ predefined_step = [
     "** Name: BC-2 Type: Displacement/Rotation",
     "*Boundary",
     "Part-2-1.Set-BC-3, 1, 1",
-    "Part-2-1.Set-BC-3, 2, 2, 0.10",
+    "Part-2-1.Set-BC-3, 2, 2, 0.12",
     "Part-2-1.Set-BC-3, 3, 3",
     "**",
     "** CONTROLS",
