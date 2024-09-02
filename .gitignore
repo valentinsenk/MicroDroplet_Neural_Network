@@ -27,6 +27,7 @@
 *.svg
 *.avi
 
+# This does not work somehow, but does not really matter
 !_compare_allresults/*.svg
 !_compare_allresults/*.png
 !_compare_allresults/*.fig
