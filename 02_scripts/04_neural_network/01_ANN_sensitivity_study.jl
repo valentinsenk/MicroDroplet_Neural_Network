@@ -70,6 +70,25 @@ for subdir in subdirs
     end
 end
 
+### --- Visualize existing data set --- ###
+
+using Plots
+
+# Initialize a plot object
+p = plot(title="Original mIFSS vs. Displacement", xlabel="Displacement (mm)", ylabel="mIFSS (N/mm^2)")
+
+# Loop through each dataset and plot it
+for i in 1:length(XY_data)
+    X = XY_data[i].X
+    Y = XY_data[i].Y
+    
+    # Plot the original data
+    plot!(X, Y, label="Data $i", legend=:outerright)
+end
+
+# Display the plot
+display(p)
+
 ### --- --- ###
 
 ### --- start here with neural network stuff --- ###
@@ -79,21 +98,39 @@ using Flux
 using Random
 using Statistics
 using Distributions
-using Plots
+#using Plots
+
+
+
+
+
 
 # Prepare input data
 # Resample input functions
 N_samples = 100
 # Get largest smallest and smallest largest X
-x_min = maximum(minimum.((d->d.X).(data)))
-x_max = minimum(maximum.((d->d.X).(data)))
+#x_min = maximum(minimum.((d->d.X).(XY_data)))
+#x_max = minimum(maximum.((d->d.X).(XY_data)))
 
 # Resample using linear interpolation
-Xs = range(x_min, x_max, length=100)
-Ys = map(data) do d
-    f = linear_interpolation(d.X, d.Y)
+Xs = range(0, 0.12, length=N_samples)
+Ys = map(XY_data) do d
+    f = linear_interpolation(d.X, d.Y, extrapolation_bc=Flat())
     f.(Xs)
 end
+
+### Plot new data for test reasons
+# Create a plot with index numbering as the legend
+plot(title="Resampled Data", xlabel="X", ylabel="Y")
+
+
+for i in 1:length(Ys)
+    plot!(Xs, Ys[i], label="Sample $i")
+end
+
+# Add a legend outside the plot
+plot!(legend=:outerright)
+
 
 # Normalize input parameters
 parameter_ranges_from_data = extrema.(eachrow(reduce(hcat, params)))
