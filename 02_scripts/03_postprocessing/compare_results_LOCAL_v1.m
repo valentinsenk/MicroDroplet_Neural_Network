@@ -296,8 +296,10 @@ end
 function [rf2_filtered, u2_adjusted] = filter_and_adjust_data(rf2, u2, threshold)
     mask = abs(rf2) >= threshold;
     first_non_zero_index = find(mask, 1);
-    if isempty(first_non_zero_index)
-        first_non_zero_index = length(rf2);
+    
+    % Adjust index if it is 1 to avoid invalid access
+    if isempty(first_non_zero_index) || first_non_zero_index == 1
+        first_non_zero_index = 2;  % Start from the second element
     end
     
     rf2_filtered = rf2(first_non_zero_index:end);
