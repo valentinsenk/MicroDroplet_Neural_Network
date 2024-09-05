@@ -18,8 +18,8 @@
 
 #Also exclude exception files and other abq waste
 
-*.exception
-*.SMABulk
+#*.exception
+#*.SMABulk
 
 # Ignore stuff in the _results folders except the txt files
 *.fig
