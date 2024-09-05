@@ -1,78 +1,25 @@
+### Load data from filtered script ###
+using JLD2
 
-### --- This part loads the parameters for training --- ###
-using JSON
-using DelimitedFiles
+samples = "geometrical_samples\\v3"
+root_results_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\03_results"
+results_dir = joinpath(root_results_dir, samples, "01_filtered_data")
 
-# Define the root directory of samples
-root_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\01_data\\parameter_files"
-samples = "mechanical_samples\\v2"
-root_dir = joinpath(root_dir, samples)
+function load_data(filename::String)
+    data = load(filename)
+    clean_XY_data = data["clean_XY_data"]
+    clean_params = data["clean_params"]
+    println("Data loaded from $filename")
+    return clean_XY_data, clean_params
+end
 
-# Find all subdirectories (e.g., 001, 002, etc.)
-subdirs = filter(d -> isdir(joinpath(root_dir, d)) && occursin(r"^\d{3}$", d), readdir(root_dir))
+clean_XY_data, clean_params = load_data(joinpath(results_dir, "filtered_data.jld2"))
 
 # Data convention (following Sebis template):
 # - The XY data for the load displacement plot is a list of named tuples with entries .X and .Y.
 # - The respective parameters are in a vector of vectors with the subvector as [p1, p2, p3, ...]
 # While the test data is evenly sampled, for the sake of generality of this code, it is assumed
 # to be sampled unevenly.
-
-
-# Initialize containers for the selected parameters and force (or stress) - displacement data
-selected_params = []
-XY_data = [] #right now the mIFSS data vs displacement is stored
-
-for subdir in subdirs
-    # Construct the path to the parameters.json file
-    param_file = joinpath(root_dir, subdir, "parameters.json")
-
-    # Read and parse the JSON file
-    if isfile(param_file)
-        param_data = JSON.parsefile(param_file)
-
-        # Manually extract parameters and order as desired for neural network
-        #param1 = param_data["geometrical_parameters"]["fiber_diameter"]
-        #param2 = param_data["geometrical_parameters"]["droplet_diameter"]
-        #param3 = param_data["geometrical_parameters"]["ratio_droplet_embedded_length"]
-        #param4 = param_data["geometrical_parameters"]["contact_angle"]
-        #param5 = param_data["geometrical_parameters"]["elliptical_fiber_ratio"]
-        #param6 = param_data["geometrical_parameters"]["fiber_rotation"]
-        #param7 = param_data["geometrical_parameters"]["blade_distance"]
-
-        param1 = param_data["mechanical_parameters"]["GI"]
-        param2 = param_data["mechanical_parameters"]["GII,GIII"]
-        param3 = param_data["mechanical_parameters"]["tI=tII=tIII"]
-        param4 = param_data["mechanical_parameters"]["interface_friction"]
-        param5 = param_data["mechanical_parameters"]["blade_friction"]
-
-        # Store the extracted parameters as a vector of parameters
-        push!(selected_params, [param1, param2, param3, param4, param5])
-
-    else
-        println("Warning: parameters.json not found in $subdir")
-        continue
-    end
-    
-    # Construct paths to the load-displacement data files
-    output_data_dir = joinpath(root_dir, subdir, "lhs_$(subdir)_v1_results", "outputdata")
-    mifss_file = joinpath(output_data_dir, "mIFSS_from_RF2_BC3_zero_stresses_removed.txt")
-    u2_file = joinpath(output_data_dir, "U2_BC3_displacement_corrected.txt")
-
-    # Read the data files
-    if isfile(mifss_file) && isfile(u2_file)
-        mifss_data = readdlm(mifss_file)[:]
-        u2_data = readdlm(u2_file)[:]
-        
-        # Store the data as a named tuple (X, Y) as Sebi did
-        push!(XY_data, (X = u2_data, Y = mifss_data))
-    else
-        println("Warning: Data files not found in $output_data_dir")
-    end
-end
-
-### --- --- ###
-
-### --- start here with neural network stuff --- ###
 
 using Interpolations
 using Flux
@@ -85,15 +32,28 @@ using Plots
 # Resample input functions
 N_samples = 100
 # Get largest smallest and smallest largest X
-x_min = maximum(minimum.((d->d.X).(data)))
-x_max = minimum(maximum.((d->d.X).(data)))
+#x_min = maximum(minimum.((d->d.X).(XY_data)))
+x_max = maximum.((d->d.X).(XY_data)) #x_max = minimum(maximum.((d->d.X).(XY_data)))
 
 # Resample using linear interpolation
-Xs = range(x_min, x_max, length=100)
-Ys = map(data) do d
-    f = linear_interpolation(d.X, d.Y)
+Xs = range(0, xmax, length=N_samples)
+Ys = map(XY_data) do d
+    f = linear_interpolation(d.X, d.Y, extrapolation_bc=Flat())
     f.(Xs)
 end
+
+### Plot new data for test reasons
+# Create a plot with index numbering as the legend
+plot(title="Resampled Data", xlabel="X", ylabel="Y")
+
+
+for i in 1:length(Ys)
+    plot!(Xs, Ys[i], label="Sample $i")
+end
+
+# Add a legend outside the plot
+plot!(legend=:outerright)
+
 
 # Normalize input parameters
 parameter_ranges_from_data = extrema.(eachrow(reduce(hcat, params)))
