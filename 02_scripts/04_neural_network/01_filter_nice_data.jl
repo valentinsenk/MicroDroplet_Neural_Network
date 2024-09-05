@@ -95,7 +95,6 @@ p = plot(
     size=(1200, 900)
 )
 
-
 # Loop through each dataset and plot it
 for i in 1:length(all_XY_data)
     X = all_XY_data[i].X
@@ -120,19 +119,13 @@ end
 # Save the plot in the new results directory
 plot_file = joinpath(results_dir, "00_Original_mIFSS_vs_Displacement.png")
 savefig(p, plot_file)
+display(p)
 
 println("Original input data plot saved to: $plot_file")
 
-# Display the plot
-display(p)
+### --- Visulize filtered data --- ###
 
-### --- --- ###
-
-### --- Plot the samles, which didn't run until the end --- ###
-
-# Calculate the overall maximum x value across all samples
-#x_max = maximum([maximum(d.X) for d in all_XY_data])
-#threshold = 0.90 * x_max  # Define threshold which samples to take in
+#define x_max threshold; filter out other
 x_max = 0.10
 
 # Initialize counters
@@ -199,11 +192,75 @@ display(p_reach)
 display(p_no_reach)
 
 # Print out the counts
-println("Number of samples that reach the x_max threshold: $count_reach")
-println("Number of samples that do NOT reach the x_max threshold: $count_no_reach")
+println("Filtered plots with x_max threshold saved")
+
+### --- Extrapolate data to better filter out stuff --- ###
+
+#Function to extrapolate data if the last values are close to zero (no friction)
+
+function extrapolate_at_zero(X, Y, x_max, zero_threshold=0.1, N_last_points=3, extrap_length=10)
+    # Ensure we only check the available number of points in Y
+    N_to_check = min(N_last_points, length(Y))
+    
+    # Check if the last N Y values are close to zero and less than x_max
+    if all(abs.(Y[end-N_to_check+1:end]) .<= zero_threshold) && X[end] < x_max
+        # If yes, add a few new X points up to x_max
+        new_xs = collect(range(X[end], x_max, length=extrap_length))
+        new_ys = fill(0.0, extrap_length)  # Add corresponding Y values as zeros
+        
+        # Return data with added extrapolation
+        return vcat(X, new_xs), vcat(Y, new_ys), true
+    end
+    
+    # If no extrapolation needed, return empty arrays
+    return [], [], false
+end
 
 
+# Define a list of line styles to iterate through
+line_styles = [:solid, :dash, :dot, :dashdot]
 
+
+# initialize plot
+p_extrapolated = plot(
+    title="Extrapolated data at y=0 to x_max = 0.10",#: $count_extra / $(length(all_XY_data)) samples ",
+    xlabel="Displacement (mm)",
+    ylabel="mIFSS (N/mm^2)",
+    size=(1200, 900)
+)
+
+# x_max already defined...
+count_extra = 0
+# Loop through each dataset and check for extrapolation
+for i in 1:length(all_XY_data)
+    X = all_XY_data[i].X
+    Y = all_XY_data[i].Y
+    
+    # Adjust X and Y if lengths are mismatched
+    if length(X) != length(Y)
+        min_length = min(length(X), length(Y))
+        X = X[1:min_length]
+        Y = Y[1:min_length]
+    end
+    
+    # Apply extrapolation
+    X_extrapolated, Y_extrapolated, was_extrapolated = extrapolate_at_zero(X, Y, x_max)
+    
+    # Plot the extrapolated data
+    if was_extrapolated
+        # Select a line style from the list (cycle through styles)
+        line_style = line_styles[mod(i-1, length(line_styles)) + 1]
+        count_extra += 1
+        plot!(p_extrapolated, X_extrapolated, Y_extrapolated, label="Sample $i", legend=:outerright, linestyle=line_style)
+    end
+end
+
+# Update the title with the count of extrapolated samples
+plot_title = "Extrapolated data at y=0 to x_max = 0.10: $count_extra / $(length(all_XY_data)) samples"
+title!(p_extrapolated, plot_title)
+
+
+display(p_extrapolated)
 
 
 #### SAVE THE FILTERED AND EXTRAPOLATED DATA FOR LATER USE ####
