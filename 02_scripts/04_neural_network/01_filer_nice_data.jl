@@ -5,32 +5,42 @@ using DelimitedFiles
 # Define the root directory of samples
 root_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\01_data\\parameter_files"
 #samples = "mechanical_samples\\v2"
-samples = "mechanical_samples\\v2"
+samples = "geometrical_samples\\v3"
 root_dir = joinpath(root_dir, samples)
+
+#### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
+manual_exceptions = [55] #55 at "geometrical_samples\\v3"
+#### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
 
 # Define the root directory for storing results
 root_results_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\03_results"
 results_dir = joinpath(root_results_dir, samples, "01_filtered_data")
 
 ### Define the parameters which need to be extracted:
-function extract_parameters(param_data)
-    # Manually extract parameters and order as desired for the neural network
-    param1 = param_data["mechanical_parameters"]["GI"]
-    param2 = param_data["mechanical_parameters"]["GII,GIII"]
-    param3 = param_data["mechanical_parameters"]["tI=tII=tIII"]
-    param4 = param_data["mechanical_parameters"]["interface_friction"]
-    param5 = param_data["mechanical_parameters"]["blade_friction"]
-    #param1 = param_data["geometrical_parameters"]["fiber_diameter"]
-    #param2 = param_data["geometrical_parameters"]["droplet_diameter"]
-    #param3 = param_data["geometrical_parameters"]["ratio_droplet_embedded_length"]
-    #param4 = param_data["geometrical_parameters"]["contact_angle"]
-    #param5 = param_data["geometrical_parameters"]["elliptical_fiber_ratio"]
-    #param6 = param_data["geometrical_parameters"]["fiber_rotation"]
-    #param7 = param_data["geometrical_parameters"]["blade_distance"]
+function extract_parameters(param_data, samples)
+    # Mechanical parameters
+    param01 = param_data["mechanical_parameters"]["GI"]
+    param02 = param_data["mechanical_parameters"]["GII,GIII"]
+    param03 = param_data["mechanical_parameters"]["tI=tII=tIII"]
+    param04 = param_data["mechanical_parameters"]["interface_friction"]
+    param05 = param_data["mechanical_parameters"]["blade_friction"]
+    # Geometrical parameters
+    param06 = param_data["geometrical_parameters"]["fiber_diameter"]
+    param07 = param_data["geometrical_parameters"]["droplet_diameter"]
+    param08 = param_data["geometrical_parameters"]["ratio_droplet_embedded_length"]
+    param09 = param_data["geometrical_parameters"]["contact_angle"]
+    param10 = param_data["geometrical_parameters"]["elliptical_fiber_ratio"]
+    param11 = param_data["geometrical_parameters"]["fiber_rotation"]
+    param12 = param_data["geometrical_parameters"]["blade_distance"]
 
-    # Return the extracted parameters as a vector
-    return [param1, param2, param3, param4, param5]
-    #return [param1, param2, param3, param4, param5, param6, param7]
+    # Return parameters based on the sample type
+    if occursin("mechanical", samples)
+        return [param01, param02, param03, param04, param05]
+    elseif occursin("geometrical", samples)
+        return [param06, param07, param08, param09, param10, param11, param12]
+    else #
+        return [param01, param02, param03, param04, param05, param06, param07, param08, param09, param10, param11, param12]
+    end
 end
 
 # Create the results directory if it does not exist
@@ -45,17 +55,19 @@ subdirs = filter(d -> isdir(joinpath(root_dir, d)) && occursin(r"^\d{3}$", d), r
 # Initialize containers for the selected parameters and force (or stress) - displacement data
 all_params = []
 all_XY_data = [] #right now the mIFSS data vs displacement is stored
+exception = []
 
 for subdir in subdirs
     # Construct the path to the parameters.json file
     param_file = joinpath(root_dir, subdir, "parameters.json")
+    exception_pattern = r".*\.exception"  # Regular expression to match the exception file
 
     # Read and parse the JSON file
     if isfile(param_file)
         param_data = JSON.parsefile(param_file)
 
         # Extract parameters using the function
-        extracted_params = extract_parameters(param_data)
+        extracted_params = extract_parameters(param_data, samples)
 
         # Store the extracted parameters as a vector of parameters
         push!(all_params, extracted_params)
@@ -63,6 +75,14 @@ for subdir in subdirs
     else
         println("Warning: parameters.json not found in $subdir")
         continue
+    end
+
+    # Check if any file matching the exception pattern exists in the directory
+    exception_files = filter(x -> occursin(exception_pattern, x), readdir(joinpath(root_dir, subdir)))
+    if !isempty(exception_files)
+        push!(exception, true)
+    else
+        push!(exception, false)
     end
     
     # Construct paths to the load-displacement data files
@@ -82,14 +102,13 @@ for subdir in subdirs
     end
 end
 
-
-
 ### --- Visualize existing data set --- ###
 using Plots
 
 # Define a list of line styles to iterate through
 line_styles = [:solid, :dash, :dot, :dashdot]
 
+indices_mismatch = []
 # Initialize a plot object
 p = plot(
     title="Original mIFSS vs. Displacement",
@@ -106,12 +125,18 @@ for i in 1:length(all_XY_data)
     # Check if X and Y have the same length
     if length(X) == length(Y)
         # Plot the original data
+        line_style = line_styles[mod(i-1, length(line_styles)) + 1]
         plot!(p, X, Y, label="Sample $i", legend=:outerright)
     else
         # If they don't match, trim both arrays to the length of the shorter one
         min_length = min(length(X), length(Y))
         X = X[1:min_length]
         Y = Y[1:min_length]
+
+        # Overwrite the data in all_XY_data
+        all_XY_data[i] = (X = X, Y = Y)
+        push!(indices_mismatch, i)
+
         println("Warning: Sample $i had mismatched lengths. Adjusted X and Y to length $min_length.")
         
         # Plot the corrected data
@@ -121,16 +146,49 @@ for i in 1:length(all_XY_data)
 end
 
 # Save the plot in the new results directory
-plot_file = joinpath(results_dir, "00_Original_mIFSS_vs_Displacement.png")
+plot_file = joinpath(results_dir, "00_ALL_samples.png")
 savefig(p, plot_file)
 display(p)
 
 println("Original input data plot saved to: $plot_file")
 
+
+### plot exception files if there are any
+
+# Initialize a plot object
+p_exception = plot(
+    title="Samples with .exception",
+    xlabel="Displacement (mm)",
+    ylabel="mIFSS (N/mm^2)",
+    size=(1200, 900)
+)
+
+indices_exception = []
+# Loop through each dataset and plot it
+for i in 1:length(all_XY_data)
+    X = all_XY_data[i].X
+    Y = all_XY_data[i].Y
+
+    if exception[i] == true
+        push!(indices_exception, i) #store indices for later filtering
+        line_style = line_styles[mod(i-1, length(line_styles)) + 1]
+        plot!(p_exception, X, Y, label="Sample $i (exception)", legend=:outerright, linestyle=line_style)
+    end
+end
+
+# Save the plot in the new results directory
+plot_file = joinpath(results_dir, "01_Exception_Samples.png")
+savefig(p_exception, plot_file)
+display(p_exception)
+
+println("Exception samples saved to: $plot_file")
+
+
 ### --- Visulize filtered data --- ###
 
 #define x_max threshold; filter out other
 x_max = 0.10
+
 
 # Initialize counters
 count_reach = 0
@@ -160,20 +218,14 @@ p_no_reach = plot(
     size=(1200, 900)
 )
 
+indices_reach = []
 # Loop through each dataset and check if it reaches 95% of x_max
 for i in 1:length(all_XY_data)
     X = all_XY_data[i].X
     Y = all_XY_data[i].Y
-
-    # Check for mismatched lengths and adjust if necessary
-    if length(X) != length(Y)
-        min_length = min(length(X), length(Y))
-        X = X[1:min_length]
-        Y = Y[1:min_length]
-        println("Warning: Sample $i had mismatched lengths. Adjusted X and Y to length $min_length.")
-    end
     
     if maximum(X) >= x_max
+        push!(indices_reach, i)
         # Plot the data that reaches the threshold
         line_style = line_styles[mod(i-1, length(line_styles)) + 1]
         plot!(p_reach, X, Y, label="Sample $i", legend=:outerright, linestyle=line_style)
@@ -186,11 +238,11 @@ end
 
 # Save the plot in the new results directory
 plot_file = joinpath(results_dir,
-    "00_NICE_SAMPLES.png")
+    "02_samles_reaching_x_max.png")
 savefig(p_reach, plot_file)
 
 plot_file = joinpath(results_dir,
-    "00_NOT_NICE_SAMPLES.png")
+    "03_samles_NOT_reaching_x_max_YET.png")
 savefig(p_no_reach, plot_file)
 
 # Display both plots
@@ -199,6 +251,7 @@ display(p_no_reach)
 
 # Print out the counts
 println("Filtered plots with x_max threshold saved")
+
 
 ### --- Extrapolate data to better filter out stuff --- ###
 
@@ -225,34 +278,34 @@ end
 
 
 
+all_XY_data_adp = copy(all_XY_data)
+
+
+
 
 # initialize plot
 p_extrapolated = plot(
-    title="Extrapolated data at y=0 to x_max = 0.10",#: $count_extra / $(length(all_XY_data)) samples ",
+    title="Extrapolated data at y=0 to x_max = $x_max",#: $count_extra / $(length(all_XY_data)) samples ",
     xlabel="Displacement (mm)",
     ylabel="mIFSS (N/mm^2)",
     size=(1200, 900)
 )
 
 # x_max already defined...
+indices_extrapolation_zero = []
 count_extra = 0
 # Loop through each dataset and check for extrapolation
 for i in 1:length(all_XY_data)
     X = all_XY_data[i].X
     Y = all_XY_data[i].Y
     
-    # Adjust X and Y if lengths are mismatched
-    if length(X) != length(Y)
-        min_length = min(length(X), length(Y))
-        X = X[1:min_length]
-        Y = Y[1:min_length]
-    end
-    
     # Apply extrapolation
     X_extrapolated, Y_extrapolated, was_extrapolated = extrapolate_at_zero(X, Y, x_max)
     
     # Plot the extrapolated data
     if was_extrapolated
+        push!(indices_extrapolation_zero, i)
+        all_XY_data_adp[i] = (X = X_extrapolated, Y = Y_extrapolated)
         # Select a line style from the list (cycle through styles)
         line_style = line_styles[mod(i-1, length(line_styles)) + 1]
         count_extra += 1
@@ -265,69 +318,10 @@ plot_title = "Extrapolated data at y=0 to x_max = 0.10: $count_extra / $(length(
 title!(p_extrapolated, plot_title)
 
 plot_file = joinpath(results_dir,
-    "00_EXTRAPOLATED_SAMPLES.png")
+    "04_Extrapolated_samples_at_zero.png")
 savefig(p_extrapolated, plot_file)
 
 display(p_extrapolated)
-
-
-### look also at data where I got non-zero plateaus ###
-
-function extrapolate_at_plateau(X, Y, x_max, slope_threshold=0.01, N_last_points=20, extrap_length=50)
-    slopes = diff(Y[end-N_last_points+1:end]) ./ diff(X[end-N_last_points+1:end])
-    
-    if all(abs.(slopes) .< slope_threshold) && X[end] < x_max
-        plateau_y = mean(Y[end-N_last_points+1:end])
-        new_xs = collect(range(X[end], x_max, length=extrap_length))
-        new_ys = fill(plateau_y, extrap_length)
-        
-        println("Extrapolating plateau for sample. X[end]: $(X[end]), plateau_y: $plateau_y")
-        return vcat(X, new_xs), vcat(Y, new_ys), true
-    end
-    
-    return [], [], false
-end
-
-p_extrapolated_plateau = plot(
-    title="Extrapolated data at y=const. to x_max = 0.10",
-    xlabel="Displacement (mm)",
-    ylabel="mIFSS (N/mm^2)",
-    size=(1200, 900)
-)
-
-count_extra_plateau = 0
-
-for i in 1:length(all_XY_data)
-    X = all_XY_data[i].X
-    Y = all_XY_data[i].Y
-    
-    if length(X) != length(Y)
-        min_length = min(length(X), length(Y))
-        X = X[1:min_length]
-        Y = Y[1:min_length]
-    end
-    
-    X_extrapolated, Y_extrapolated, was_extrapolated = extrapolate_at_plateau(X, Y, x_max, 0.01, 20, 50)
-    
-    if was_extrapolated
-        line_style = line_styles[mod(i-1, length(line_styles)) + 1]
-        count_extra_plateau += 1
-        plot!(p_extrapolated_plateau, X_extrapolated, Y_extrapolated, label="Sample $i", legend=:outerright, linestyle=line_style)
-    end
-end
-
-plot_title = "Extrapolated data at y=const. to x_max = 0.10: $count_extra_plateau / $(length(all_XY_data)) samples"
-title!(p_extrapolated_plateau, plot_title)
-
-if count_extra_plateau > 0
-    plot_file = joinpath(results_dir, "00_EXTRAPOLATED_SAMPLES_PLATEAU.png")
-    savefig(p_extrapolated_plateau, plot_file)
-    display(p_extrapolated_plateau)
-    println("Saved extrapolated plot to: $plot_file")
-else
-    println("No samples were extrapolated.")
-end
-
 
 
 ### --- Extrapolate data for plateau cases with a drop greater than 50% --- ###
@@ -348,9 +342,9 @@ function extrapolate_with_custom_criteria(X, Y, x_max; drop_threshold=0.5, relat
         return [], [], false  # No extrapolation if Y_last hasn't dropped enough
     end
     
-    # Find the point where X is approximately 90% of the last X value
+    # Find the point where X is approximately 95% of the last X value
     X_target = 0.95 * X_last
-    idx_near_target = findmin(abs.(X .- X_target))[2]  # Index of closest point to 90% of X_last
+    idx_near_target = findmin(abs.(X .- X_target))[2]  # Index of closest point to 95% of X_last
     
     # Get corresponding Y value
     Y_target = Y[idx_near_target]
@@ -369,9 +363,6 @@ end
 
 ### --- Plotting extrapolated data --- ###
 
-# Set the x_max value
-x_max = 0.10
-
 # Initialize a plot object
 p_extrapolated_custom = plot(
     title="Extrapolated Data for Plateau Detection with Custom Criteria",
@@ -380,29 +371,23 @@ p_extrapolated_custom = plot(
     size=(1200, 900)
 )
 
-# Define the line styles to cycle through
-line_styles = [:solid, :dash, :dot, :dashdot]
 
 # Counter for the number of extrapolated samples
 count_custom_extrapolated = 0
+indices_extrapolation_plateau = []
 
 # Loop through each dataset (already loaded)
 for i in 1:length(all_XY_data)
     X = all_XY_data[i].X
     Y = all_XY_data[i].Y
     
-    # Ensure X and Y have the same length
-    if length(X) != length(Y)
-        min_length = min(length(X), length(Y))
-        X = X[1:min_length]
-        Y = Y[1:min_length]
-    end
-    
     # Apply the custom extrapolation function
     X_extrapolated, Y_extrapolated, was_extrapolated = extrapolate_with_custom_criteria(X, Y, x_max)
     
     # Plot the extrapolated data
     if was_extrapolated
+        push!(indices_extrapolation_plateau, i)
+        all_XY_data_adp[i] = (X = X_extrapolated, Y = Y_extrapolated)
         # Select a line style from the list (cycle through styles)
         line_style = line_styles[mod(i-1, length(line_styles)) + 1]
         count_custom_extrapolated += 1
@@ -415,7 +400,7 @@ plot_title_custom = "Extrapolated Data for Plateau Detection: $count_custom_extr
 title!(p_extrapolated_custom, plot_title_custom)
 
 # Save the plot
-plot_file_custom = joinpath(results_dir, "00_Custom_Extrapolated_Samples.png")
+plot_file_custom = joinpath(results_dir, "05_Extrapolated_samples_at_plateau.png")
 savefig(p_extrapolated_custom, plot_file_custom)
 
 # Display the plot
@@ -426,14 +411,168 @@ println("Custom extrapolated data plot saved to: $plot_file_custom")
 
 
 
-#### SAVE THE FILTERED AND EXTRAPOLATED DATA FOR LATER USE ####
-using JLD2
+### --- ####################### --- ###
+### --- PUT TOGETHER CLEAN DATA --- ###
+### --- ####################### --- ###
 
-function save_data(filename::String, clean_XY_data, clean_params)
-    @save filename clean_XY_data clean_params
+# Combine indices from different sources, sort, and remove duplicates
+indices_clean = sort(unique(vcat(indices_reach, indices_extrapolation_zero, indices_extrapolation_plateau)))
+
+# Define a manual exceptions list (manually specify the indices of the bad data samples)
+#manual_exceptions = [55]  # Replace with the indices you want to exclude
+
+# Remove any indices that are in the manual_exceptions list
+indices_clean = filter(i -> !(i in manual_exceptions), indices_clean)
+
+# Initialize the clean data container
+clean_XY_data = []
+clean_params = []
+
+# Loop through each index in indices_clean to extract clean data
+for i in indices_clean
+    X = all_XY_data_adp[i].X
+    Y = all_XY_data_adp[i].Y
+
+    params = all_params[i]
+    
+    # Push the corresponding clean data into the clean_XY_data array
+    push!(clean_XY_data, (X = X, Y = Y))
+    push!(clean_params, params)
+end
+
+println("Clean data extracted for indices: $indices_clean")
+
+
+
+
+### PLot clean samples
+p_clean = plot(
+    title="Clean samples: $(length(clean_XY_data)) / $(length(all_XY_data))",
+    xlabel="Displacement (mm)",
+    ylabel="mIFSS (N/mm²)",
+    size=(1200, 900)
+)
+
+
+for i in 1:length(clean_XY_data)
+    X = clean_XY_data[i].X
+    Y = clean_XY_data[i].Y
+
+    line_style = line_styles[mod(i-1, length(line_styles)) + 1]
+    plot!(p_clean, X, Y, label="Clean $i", legend=:outerright, linestyle=line_style)
+end
+
+# Save the plot
+plot_file_clean = joinpath(results_dir, "06_Clean_samples.png")
+savefig(p_clean, plot_file_clean)
+
+# Display the plot
+display(p_clean)
+
+# Print out the saved file location
+println("Clean samples saved to: $plot_file_clean")
+
+
+### do a little bit more for ANN input...
+
+# Function to cut the data at x_max and linearly interpolate the last y_value
+function cut_and_interpolate(X, Y, x_max)
+    if maximum(X) > x_max
+        # Find the indices surrounding x_max
+        idx_below = findlast(x -> x <= x_max, X)
+        idx_above = findfirst(x -> x > x_max, X)
+        
+        # Linear interpolation for y at x_max
+        X_below, X_above = X[idx_below], X[idx_above]
+        Y_below, Y_above = Y[idx_below], Y[idx_above]
+        y_interp = Y_below + (Y_above - Y_below) * (x_max - X_below) / (X_above - X_below)
+        
+        # Cut the data and append the interpolated point
+        X = vcat(X[1:idx_below], x_max)
+        Y = vcat(Y[1:idx_below], y_interp)
+    end
+    return X, Y
+end
+
+# Apply the cut_and_interpolate function to all clean data
+for i in 1:length(clean_XY_data)
+    X, Y = clean_XY_data[i].X, clean_XY_data[i].Y
+    X_cut, Y_cut = cut_and_interpolate(X, Y, x_max)
+    clean_XY_data[i] = (X = X_cut, Y = Y_cut)
+end
+
+println("Data cut and interpolated at x_max = $x_max")
+
+
+### PLot clean samples
+p_clean_cut = plot(
+    title="Clean samples CUT at x_max. $(length(clean_XY_data)) / $(length(all_XY_data))",
+    xlabel="Displacement (mm)",
+    ylabel="mIFSS (N/mm²)",
+    size=(1200, 900)
+)
+
+
+for i in 1:length(clean_XY_data)
+    X = clean_XY_data[i].X
+    Y = clean_XY_data[i].Y
+
+    line_style = line_styles[mod(i-1, length(line_styles)) + 1]
+    plot!(p_clean_cut, X, Y, label="Clean $i", legend=:outerright, linestyle=line_style)
+end
+
+# Save the plot
+plot_file_clean_cut = joinpath(results_dir, "07_Clean_samples_CUT_x_max.png")
+savefig(p_clean_cut, plot_file_clean_cut)
+
+# Display the plot
+display(p_clean_cut)
+
+# Print out the saved file location
+println("Clean samples saved to: $plot_file_clean_cut")
+
+
+### Resample data even more for input for Sebis ANN SCRIPT
+using Interpolations
+# Resample using linear interpolation
+Xs = range(0, x_max, length=300)
+Ys = map(clean_XY_data) do d
+    f = linear_interpolation(d.X, d.Y)
+    f.(Xs)
+end
+
+
+# Initialize plot objects for comparison
+p_clean_cut_resample = plot(
+    title="FINAL input for ANN: $(length(clean_XY_data)) / $(length(all_XY_data))",
+    xlabel="Displacement (mm)",
+    ylabel="mIFSS (N/mm²)",
+    size=(1200, 900)
+)
+
+# Plot the resampled data
+for i in 1:length(Ys)
+    line_style = line_styles[mod(i-1, length(line_styles)) + 1]
+    plot!(p_clean_cut_resample, Xs, Ys[i], label="Final $i", legend=:outerright, linestyle=line_style)
+end
+
+# Display the plot
+display(p_clean_cut_resample)
+
+plot_file_clean_cut_re = joinpath(results_dir, "08_Final_input_ANN.png")
+savefig(p_clean_cut_resample, plot_file_clean_cut_re)
+
+
+#############################
+### SAVE CLEAN PARAMETERS ###
+#############################
+using JLD2
+# Function to save Xs, Ys, and clean_params to a .jld2 file
+function save_data_to_jld2(filename, Xs, Ys, clean_params)
+    @save filename Xs Ys clean_params
     println("Data saved to $filename")
 end
 
-save_data(joinpath(results_dir, "clean_data.jld2"), clean_XY_data, clean_params)
-
-#### AND THIS IS FOR LOADING IN THE ANN SCRIPT
+# Example usage
+save_data_file = joinpath(results_dir, "clean_data.jld2")
+save_data_to_jld2(save_data_file, Xs, Ys, clean_params)
