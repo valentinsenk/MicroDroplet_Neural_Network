@@ -2,18 +2,29 @@
 using JLD2
 
 samples = "geometrical_samples\\v3"
+#samples = "mechanical_samples\\v2"
 root_results_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\03_results"
 results_dir = joinpath(root_results_dir, samples, "01_filtered_data")
+results_dir_ANN = joinpath(root_results_dir, samples, "02_ANN")
 
-function load_data(filename::String)
-    data = load(filename)
-    clean_XY_data = data["clean_XY_data"]
-    clean_params = data["clean_params"]
+# Function to load Xs, Ys, and clean_params from a .jld2 file
+function load_data_from_jld2(filename)
+    @load filename Xs Ys clean_params
     println("Data loaded from $filename")
-    return clean_XY_data, clean_params
+    return Xs, Ys, clean_params
 end
 
-clean_XY_data, clean_params = load_data(joinpath(results_dir, "filtered_data.jld2"))
+# Example usage
+load_data_file = joinpath(results_dir, "clean_data.jld2")
+Xs, Ys, clean_params = load_data_from_jld2(load_data_file)
+
+
+# Create the results directory FOR ANN if it does not exist
+if !isdir(results_dir_ANN)
+    mkpath(results_dir_ANN)
+    println("Created results directory at: $results_dir_ANN")
+end
+
 
 # Data convention (following Sebis template):
 # - The XY data for the load displacement plot is a list of named tuples with entries .X and .Y.
@@ -28,36 +39,22 @@ using Statistics
 using Distributions
 using Plots
 
-# Prepare input data
-# Resample input functions
-N_samples = 100
-# Get largest smallest and smallest largest X
-#x_min = maximum(minimum.((d->d.X).(XY_data)))
-x_max = maximum.((d->d.X).(XY_data)) #x_max = minimum(maximum.((d->d.X).(XY_data)))
-
-# Resample using linear interpolation
-Xs = range(0, xmax, length=N_samples)
-Ys = map(XY_data) do d
-    f = linear_interpolation(d.X, d.Y, extrapolation_bc=Flat())
-    f.(Xs)
-end
-
 ### Plot new data for test reasons
 # Create a plot with index numbering as the legend
-plot(title="Resampled Data", xlabel="X", ylabel="Y")
+#plot(title="Resampled Data", xlabel="X", ylabel="Y")
 
 
-for i in 1:length(Ys)
-    plot!(Xs, Ys[i], label="Sample $i")
-end
+#for i in 1:length(Ys)
+#    plot!(Xs, Ys[i], label="Sample $i")
+#end
 
 # Add a legend outside the plot
-plot!(legend=:outerright)
+#plot!(legend=:outerright)
 
 
 # Normalize input parameters
-parameter_ranges_from_data = extrema.(eachrow(reduce(hcat, params)))
-normalized_params = map(params) do p
+parameter_ranges_from_data = extrema.(eachrow(reduce(hcat, clean_params)))
+normalized_params = map(clean_params) do p
     [(p[i]-l)/(u-l) for (i,(l,u)) in enumerate(parameter_ranges_from_data)]
 end
 
@@ -74,7 +71,7 @@ data_training = [ (normalized_params[id], Ys[id]) for id in training_ids]
 data_test = [ (normalized_params[id], Ys[id]) for id in test_ids]
 
 # Determine size of layers
-N_inp = length(first(params))
+N_inp = length(first(clean_params))
 N_out = length(Xs)
 
 # Define the model.
@@ -125,14 +122,32 @@ for epoch in 1:5000
 end
 
 # Plotting the loss
-plot([losses_training, losses_test], label=["training" "test"], yscale=:log10, xlabel="epochs", ylabel="MSE")
-savefig("fig/Example_01/loss_f.png")
+#p_loss = plot([losses_training, losses_test], label=["training" "test"], yscale=:log10, xlabel="epochs", ylabel="MSE")
+p_loss = plot([losses_training, losses_test], label=["training" "test"], xlabel="epochs", ylabel="MSE")
+save_plot_loss = joinpath(results_dir_ANN, "loss_f.png")
+savefig(save_plot_loss)
+display(p_loss)
 
 # Plotting the N worst approximations
 test_losses = [Flux.Losses.mse(model(d[1]),d[2]) for d in data_test]
 n_max = sort(collect(1:length(test_losses)), by=i->test_losses[i], rev=true)
-plot(layout=grid(2,3),[plot(Xs,[model(data_test[idx][1]),data_test[idx][2]], labels=["prediction" "truth"]) for idx in n_max[1:6]]...)
-savefig("fig/Example_01/n_worst.png")
+p_worst = plot(layout=grid(2,3),[plot(Xs,[model(data_test[idx][1]),data_test[idx][2]], labels=["prediction" "truth"]) for idx in n_max[1:6]]...)
+save_plot_worst = joinpath(results_dir_ANN, "n_worst.png")
+savefig(save_plot_worst)
+display(p_worst)
+
+# Plotting the N best approximations
+n_min = sort(collect(1:length(test_losses)), by=i->test_losses[i])  # Sort in ascending order for the best losses
+p_best = plot(layout=grid(2, 3), [plot(Xs, [model(data_test[idx][1]), data_test[idx][2]], labels=["prediction" "truth"]) for idx in n_min[1:6]]...)
+save_plot_best = joinpath(results_dir_ANN, "n_best.png")
+savefig(save_plot_best)
+display(p_best)
+
+
+
+###
+### UNTIL HERE FIRST TESTS DONE
+###
 
 plt = plot()
 
