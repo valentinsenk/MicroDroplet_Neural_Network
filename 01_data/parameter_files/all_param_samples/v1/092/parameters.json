@@ -1,0 +1,18 @@
+{
+    "geometrical_parameters": {
+        "fiber_diameter": 0.030278557114228458,
+        "blade_distance": 0.1451944332572135,
+        "elliptical_fiber_ratio": 2.88376753507014,
+        "ratio_droplet_embedded_length": 1.4793587174348697,
+        "droplet_diameter": 0.156436873747495,
+        "contact_angle": 29.010020040080157,
+        "fiber_rotation": 4.869739478957916
+    },
+    "mechanical_parameters": {
+        "interface_friction": 0.662124248496994,
+        "GI": 0.0900801603206413,
+        "GII,GIII": 0.7143086172344689,
+        "tI=tII=tIII": 1.155310621242485,
+        "blade_friction": 0.29178356713426856
+    }
+}
