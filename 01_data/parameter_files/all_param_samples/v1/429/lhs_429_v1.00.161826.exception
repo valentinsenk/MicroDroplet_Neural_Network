@@ -1,0 +1,79 @@
+<Description>
+      ABAQUS/standard rank 0 encountered a SEGMENTATION VIOLATION referencing location 0x18
+
+</Description>
+
+<Details>
+   SYSTEM ERROR: MAIN FACET NODES SHOULD BE PART OF THE CONNECTIVITY.
+
+</Details>
+
+<Step> 1 </Step>
+
+<Procedure> STATIC </Procedure>
+
+
+<PriorErrors>
+1) SYSTEM ERROR: MAIN FACET NODES SHOULD BE PART OF THE CONNECTIVITY.
+</PriorErrors>
+
+<Context>
+   ELEMENT LOOP
+</Context>
+
+<Phase>
+   Increment | Attempt | Iteration | Elgen | Elgene | Elgene_contact
+</Phase>
+
+
+<Memory>
+   <Current>            3 GB </Current>
+   <Resident>           0 GB </Resident>
+   <Physical>         504 GB </Physical>
+   <Limit>            403 GB </Limit>
+   <Accessible>       504 GB </Accessible>
+   <Available>        331 GB </Available>
+   <Allocator>            DL </Allocator>
+   <HugePages>        always </HugePages>
+</Memory>
+
+<Swap>
+       <Size>           0 GB </Size>
+       <Used>           0 GB </Used>
+       <Free>           0 GB </Free>
+</Swap>
+
+<Directories>
+  <current> /tmp/vsenk_lhs_429_v1_157142   </current> <free>    244 GB </free>   <used>      6 GB </used> 
+    <indir> /home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/all_param_samples/v1/429 </indir>   <free>  26464 GB </free>  
+   <outdir> /home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/all_param_samples/v1/429 </outdir>  <free>  26464 GB </free> 
+   <tmpdir> /tmp/vsenk_lhs_429_v1_157142   </tmpdir>  <free>    244 GB </free> 
+</Directories>
+
+<Installation>
+     <Version> 2024 6.24-1 </Version>
+       <Build> 2023_09_21-14.55.25 RELr426 190762 </Build>
+  <Executable> /opt/abaqus/2024/linux_a64/code/bin/standard </Executable>
+</Installation>
+
+<Callstack>
+   1) libABQSMAAncAdbModule.so   0x00114551 ! adb_Mdb_GetModelRecordType_C ??:?
+   2) libABQSMAStaCore.so        0x028bc49a ! std_PartitionManager::ReleaseElrefCache ??:?
+   3) libABQSMAStaCore.so        0x028bcfa1 ! std_PartitionManager::~std_PartitionManager ??:?
+   4) libABQSMAStaCore.so        0x028bd20c ! thr_ThreadSingletonBase<std_PartitionManager>::Finalize ??:?
+   5) libABQSMAStaCore.so        0x0047d6cb ! SMAStaStd_finalize ??:?
+   6) libABQSMAStaCore.so        0x002aba98 ! cow_List<SMADynFrameValue>::RaiseOutOfRange ??:?
+   7) libc.so.6                  0x0005126c ! __run_exit_handlers :?
+   8) libc.so.6                  0x000513a0 ! on_exit          :?
+   9) libABQSMAAbuBasicUtils.so  0x000e1844 ! thr_ErrorInThread ??:?
+  10) libABQSMAAspSupport.so     0x001d0fd6 ! xitjob           ??:?
+  11) libABQSMAStsShare.so       0x005eb216 ! shr_xit          ??:?
+  12) libABQSMAStsShare.so       0x004bb28c ! shr_errxit       ??:?
+  13) libABQSMAStaCore.so        0x03c59267 ! std_stoscatnliit1coh_ ??:?
+  14) libABQSMAStaCore.so        0x03a9bd73 ! std_stoscatnliit11 ??:?
+  15) libABQSMAStaCore.so        0x02ebf389 ! std_elstch_inter ??:?
+  16) libABQSMAStaCore.so        0x02ddcc08 ! std_elgene_inter_ ??:?
+  17) libABQSMAStaCore.so        0x02b5de14 ! std_contconstraintgene_general_ ??:?
+  18) libABQSMAStaCore.so        0x02b498a2 ! std_contconstraintgen_general_ ??:?
+</Callstack>
+
