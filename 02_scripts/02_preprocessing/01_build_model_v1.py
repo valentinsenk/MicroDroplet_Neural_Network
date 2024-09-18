@@ -88,7 +88,26 @@ r = round(params['geometrical_parameters']['fiber_diameter']/2, 4) #0.0105  # fi
 o = round(params['geometrical_parameters']['contact_angle'], 2) #25.7  # contact angle in degrees (=in Pantalonis paper this is probaly 90deg minus contact angle)
 ell = round(params['geometrical_parameters']['elliptical_fiber_ratio'], 2) #1.5 #crosssection ratio of elliptical fiber (define 1.0001 for "circle") 
 rot = round(params['geometrical_parameters']['fiber_rotation'], 1) #0.0, 30.0, 45.0, 60.0 rotation of elliptical fiber 
-b = round(params['geometrical_parameters']['blade_distance']/2, 4) #r + r*ell #4*r*ell  #1.5 * ell * r #e.g. 1.2, 1.5, 2, 5 * (ell*r)
+
+### --- Moved dynamical blade distance stuff from sampling script here ... --- ###
+
+normalized_blade_distance = params['geometrical_parameters']['blade_distance']
+
+fiber_diameter = params['geometrical_parameters']['fiber_diameter']
+elliptical_fiber_ratio = params['geometrical_parameters']['elliptical_fiber_ratio']
+fiber_rotation = params['geometrical_parameters']['fiber_rotation']
+droplet_diameter = params['geometrical_parameters']['droplet_diameter']
+
+# Calculate min and max blade distance
+min_blade_distance = fiber_diameter * np.sqrt(elliptical_fiber_ratio**2 * np.cos(np.radians(fiber_rotation))**2 + np.sin(np.radians(fiber_rotation))**2)
+max_blade_distance = droplet_diameter
+
+# Rescale the normalized blade distance value
+actual_blade_distance = min_blade_distance + normalized_blade_distance * (max_blade_distance - min_blade_distance)
+
+### --- ------------------------------------------------------------------ --- ###
+
+b = round(actual_blade_distance/2, 4) #CHANGED AFTER MOVING PARAMETER FROM JULIA SCRIPT HERE
 blade = 0 #blade 0: 20 degrees angle, 1:flat, 2: rounded with fillet radius=0.005
 l_free = round(2*r, 4) #3000 # free fiber length in mm
 l_end = round(L, 4) # length of fiber from loose end to the end of the droplet
@@ -118,7 +137,8 @@ logging.info(f"l_end = {l_end} mm # fiber length from loose end to droplet")
 logging.info(f"ell = {ell} #crosssection ratio of elliptical fiber")
 logging.info(f"rot = {rot} degrees #0.0, 30.0, 45.0, 60.0 rotation of elliptical fiber")
 logging.info(f"blade = no. {blade} #blade type (blade 0: 20 degrees angle, 1:flat, 2: rounded with fillet radius=0.005)")
-logging.info(f"b = {b} mm #blade distance (ratio) to (longer, elliptical) fiber diameter (times 2 would be blade to blade)")
+logging.info(f"normalized_blade_distance = {normalized_blade_distance}")
+logging.info(f"b = {b} mm #actual blade distance (from middle axis)")
 logging.info(f"-----------------------------------------")
 logging.info(f"GI = {G_modeI} N/mm #")
 logging.info(f"GII = {G_modeII} N/mm #")

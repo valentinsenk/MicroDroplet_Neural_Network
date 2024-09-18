@@ -97,25 +97,26 @@ end
 scaled_samples = scaleLHC(lhs_samples_normalized, variable_ranges)
 
 
-# --- If blade_distance is varaible, adapt ranges according to other variable geometrical parameters --- #
-if haskey(variable_params["geometrical_parameters"], "blade_distance")
-    blade_index = findfirst(==( "blade_distance"), collect(keys(variable_params["geometrical_parameters"])))
-
-    for i in 1:num_samples
-        fiber_diameter = scaled_samples[i, findfirst(==("fiber_diameter"), collect(keys(variable_params["geometrical_parameters"])))]
-        elliptical_fiber_ratio = scaled_samples[i, findfirst(==("elliptical_fiber_ratio"), collect(keys(variable_params["geometrical_parameters"])))]
-        fiber_rotation = scaled_samples[i, findfirst(==("fiber_rotation"), collect(keys(variable_params["geometrical_parameters"])))]
-        droplet_diameter = scaled_samples[i, findfirst(==("droplet_diameter"), collect(keys(variable_params["geometrical_parameters"])))]
-
-        # Calculate min and max blade distance
-        min_blade_distance = fiber_diameter * sqrt(elliptical_fiber_ratio^2 * cosd(fiber_rotation)^2 + sind(fiber_rotation)^2)
-        max_blade_distance = droplet_diameter
-
-        # Rescale the normalized LHS value to the new range
-        normalized_value = lhs_samples_normalized[i, blade_index]
-        scaled_samples[i, blade_index] = min_blade_distance + normalized_value * (max_blade_distance - min_blade_distance)
-    end
-end
+#### THIS PART WAS MOVED TO THE PYTHON SCRIPT ####
+# --- If blade_distance is variable, adapt ranges according to other variable geometrical parameters --- #
+#if haskey(variable_params["geometrical_parameters"], "blade_distance")
+#    blade_index = findfirst(==( "blade_distance"), collect(keys(variable_params["geometrical_parameters"])))
+#
+#    for i in 1:num_samples
+#        fiber_diameter = scaled_samples[i, findfirst(==("fiber_diameter"), collect(keys(variable_params["geometrical_parameters"])))]
+#        elliptical_fiber_ratio = scaled_samples[i, findfirst(==("elliptical_fiber_ratio"), collect(keys(variable_params["geometrical_parameters"])))]
+#        fiber_rotation = scaled_samples[i, findfirst(==("fiber_rotation"), collect(keys(variable_params["geometrical_parameters"])))]
+#        droplet_diameter = scaled_samples[i, findfirst(==("droplet_diameter"), collect(keys(variable_params["geometrical_parameters"])))]
+#
+#        # Calculate min and max blade distance
+#        min_blade_distance = fiber_diameter * sqrt(elliptical_fiber_ratio^2 * cosd(fiber_rotation)^2 + sind(fiber_rotation)^2)
+#        max_blade_distance = droplet_diameter
+#
+#        # Rescale the normalized LHS value to the new range
+#        normalized_value = lhs_samples_normalized[i, blade_index]
+#        scaled_samples[i, blade_index] = min_blade_distance + normalized_value * (max_blade_distance - min_blade_distance)
+#    end
+#end
 # ------------------------------------------------------------------------------------------------------ #
 
 

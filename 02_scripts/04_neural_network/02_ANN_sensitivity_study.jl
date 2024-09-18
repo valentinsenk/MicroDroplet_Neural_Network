@@ -1,8 +1,9 @@
 ### Load data from filtered script ###
 using JLD2
 
-samples = "geometrical_samples\\v3"
-#samples = "mechanical_samples\\v2"
+samples = "geometrical_samples\\v3" #7 parameters here
+#samples = "mechanical_samples\\v2" #5 parameters here
+#samples = "all_param_samples\\v1" #12 parameters here
 root_results_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\03_results"
 results_dir = joinpath(root_results_dir, samples, "01_filtered_data")
 results_dir_ANN = joinpath(root_results_dir, samples, "02_ANN")
@@ -90,23 +91,27 @@ N_out = length(Xs)
 # The original model is linear in the parameter space so an ANN without an activation function
 # would be sufficient.
 model = Chain(
-    Dense(N_inp => 4*N_inp, relu),
+    Dense(N_inp => 4*N_inp, relu), #Activation functions: try also tanh
     Dense(4*N_inp => 4*N_inp, relu),
     Dense(4*N_inp => N_out)
 ) |> f64
 
 # This is the optimizer
-optim = Flux.setup(Flux.Adam(0.1), model)
+optim = Flux.setup(Flux.Adam(0.01), model)
 
 # This is the batch loader with the minibatch size
-batches = Flux.DataLoader(data_training, batchsize=4, shuffle=true)
+batches = Flux.DataLoader(data_training, batchsize=8, shuffle=true) #batchsize=2 is worse for mechsamples...
 
 # Init variables for tracking the loss through the epochs
 losses_training = Float64[]
 losses_test = Float64[]
 
 # Train for 5000 epochs
-for epoch in 1:5000
+total_epochs = 500
+for epoch in 1:total_epochs
+    # Print the current epoch dynamically on the same line
+    print("\rTraining epoch $epoch / $total_epochs ...")
+    flush(stdout)
     # Loop over minibatches
     for batch in batches
         # Compute average loss and gradient for the minibatch
@@ -121,6 +126,9 @@ for epoch in 1:5000
     push!(losses_test,mean(Flux.Losses.mse(model(x),y) for (x,y) in data_test))
 end
 
+# Make sure the final epoch number prints after the loop
+println("\nTraining complete.")
+
 # Plotting the loss
 #p_loss = plot([losses_training, losses_test], label=["training" "test"], yscale=:log10, xlabel="epochs", ylabel="MSE")
 p_loss = plot([losses_training, losses_test], label=["training" "test"], xlabel="epochs", ylabel="MSE")
@@ -128,20 +136,72 @@ save_plot_loss = joinpath(results_dir_ANN, "loss_f.png")
 savefig(save_plot_loss)
 display(p_loss)
 
+### --- make some nice plots --- ###
+
+#parameter range information for plots
+parameter_ranges = extrema.(eachrow(reduce(hcat, clean_params)))
+range_text = "Parameter ranges:\n " * join([ "p$i: (" * string(round(l, digits=4)) * "-" * string(round(u, digits=4)) * ")" 
+                                           for (i, (l, u)) in enumerate(parameter_ranges)], ", ")
+
+function generate_param_string(sample_idx)
+    params = clean_params[sample_idx]
+    param_str = "p: " * join([ string(round(p, digits=4)) for (i, p) in enumerate(params)], ", ")
+    return param_str
+end
+
 # Plotting the N worst approximations
 test_losses = [Flux.Losses.mse(model(d[1]),d[2]) for d in data_test]
 n_max = sort(collect(1:length(test_losses)), by=i->test_losses[i], rev=true)
-p_worst = plot(layout=grid(2,3),[plot(Xs,[model(data_test[idx][1]),data_test[idx][2]], labels=["prediction" "truth"]) for idx in n_max[1:6]]...)
+p_worst = plot(layout=grid(2,3), plot_title=range_text, plot_titlefontsize=5,
+    [plot(Xs, [model(data_test[idx][1]), data_test[idx][2]], 
+    labels=["prediction" "truth"], 
+    title="WORST SAMPLE $(idx)\n$(generate_param_string(idx))",
+        titlefont=4, ylims=(0, 20)) for idx in n_max[1:6]]...)
 save_plot_worst = joinpath(results_dir_ANN, "n_worst.png")
-savefig(save_plot_worst)
+savefig(p_worst, save_plot_worst)
 display(p_worst)
+
 
 # Plotting the N best approximations
 n_min = sort(collect(1:length(test_losses)), by=i->test_losses[i])  # Sort in ascending order for the best losses
-p_best = plot(layout=grid(2, 3), [plot(Xs, [model(data_test[idx][1]), data_test[idx][2]], labels=["prediction" "truth"]) for idx in n_min[1:6]]...)
+p_best = plot(layout=grid(2, 3), plot_title=range_text, plot_titlefontsize=5,
+    [plot(Xs, [model(data_test[idx][1]), data_test[idx][2]], 
+    labels=["prediction" "truth"], 
+    title="BEST SAMPLE $(idx)\n$(generate_param_string(idx))",
+        titlefont=4, ylims=(0, 20)) for idx in n_min[1:6]]...)
 save_plot_best = joinpath(results_dir_ANN, "n_best.png")
 savefig(save_plot_best)
 display(p_best)
+
+# Plotting samples close to the median of all samples 
+middle_start = Int(floor(length(test_losses) / 2)) - 3  # Start 3 positions before the middle
+middle_end = middle_start + 5  # Take 6 samples
+n_middle = middle_start:middle_end
+p_median = plot(layout=grid(2, 3), plot_title=range_text, plot_titlefontsize=5,
+    [plot(Xs, [model(data_test[idx][1]), data_test[idx][2]], 
+    labels=["prediction" "truth"], 
+    title="MEDIAN SAMPLE $(idx)\n$(generate_param_string(idx))",
+        titlefont=4, ylims=(0, 20)) for idx in n_middle]...)
+save_plot_median = joinpath(results_dir_ANN, "n_median.png")
+savefig(save_plot_median)
+display(p_median)
+
+
+# Plotting the mean approximation
+#mean_prediction = mean([model(d[1]) for d in data_test], dims=1)
+#mean_truth = mean([d[2] for d in data_test], dims=1)
+#p_mean = plot(Xs, [mean_prediction, mean_truth], labels=["mean prediction" "mean truth"])
+#save_plot_mean = joinpath(results_dir_ANN, "mean_plot.png")
+#savefig(save_plot_mean)
+#display(p_mean)
+
+# Plotting the median approximation
+#median_prediction = median([model(d[1]) for d in data_test], dims=1)
+#median_truth = median([d[2] for d in data_test], dims=1)
+#p_median = plot(Xs, [median_prediction, median_truth], labels=["median prediction" "median truth"])
+#save_plot_median = joinpath(results_dir_ANN, "median_plot.png")
+#savefig(save_plot_median)
+#display(p_median)
 
 
 
@@ -149,41 +209,41 @@ display(p_best)
 ### UNTIL HERE FIRST TESTS DONE
 ###
 
-plt = plot()
+#plt = plot()
 
 # Compute the range of function values
-base = [model(collect(ps)) for ps in Iterators.product([range(0,1, length=3) for _ in 1:N_inp]...)]
+#base = [model(collect(ps)) for ps in Iterators.product([range(0,1, length=3) for _ in 1:N_inp]...)]
 # Compute the derivative for all parameters at all locations in base
-sens = [Flux.jacobian(model, collect(ps))[1] for ps in Iterators.product([range(0,1, length=3) for _ in 1:N_inp]...)]
+#sens = [Flux.jacobian(model, collect(ps))[1] for ps in Iterators.product([range(0,1, length=3) for _ in 1:N_inp]...)]
 
 # Fit normal distributions to the gradient data
-dists = [[fit(Normal,[sens[s][i,pidx] for s in eachindex(sens)]) for i in 1:N_out] for pidx in 1:N_inp]
+#dists = [[fit(Normal,[sens[s][i,pidx] for s in eachindex(sens)]) for i in 1:N_out] for pidx in 1:N_inp]
 
 # Plot the gradient data
-colors = palette(:rainbow, N_inp)
-plt2 = plot(ylabel="Gradient")
-for (idx,v) in enumerate(["p$i" for i in 1:N_inp])
-    # Compute quartile
-    quant_map = hcat(quantile.(dists[idx],Ref([0.25, 0.75]))...)
-    # Compute mean
-    μs = map(x->x.μ, dists[idx])
-    # Plot inner quartile range as shaded area
-    plot!(plt2, Xs, μs, color=colors[idx], lw=0, ribbon=(μs - quant_map[1,:], quant_map[end,:]-μs), label=:none)
-    # Plot mean
-    plot!(plt2, Xs, μs, color=colors[idx], label=v)
-end
+#colors = palette(:rainbow, N_inp)
+#plt2 = plot(ylabel="Gradient")
+#for (idx,v) in enumerate(["p$i" for i in 1:N_inp])
+#    # Compute quartile
+#    quant_map = hcat(quantile.(dists[idx],Ref([0.25, 0.75]))...)
+#    # Compute mean
+#    μs = map(x->x.μ, dists[idx])
+#    # Plot inner quartile range as shaded area
+#    plot!(plt2, Xs, μs, color=colors[idx], lw=0, ribbon=(μs - quant_map[1,:], quant_map[end,:]-μs), label=:none)
+#    # Plot mean
+#    plot!(plt2, Xs, μs, color=colors[idx], label=v)
+#end
 
 # Compute visualization of base values
-_base = reduce(hcat,base)
-qtly = quantile.(eachrow(_base),Ref([0.25,0.75]))
-_base_min = (x->x[1]).(qtly)
-_base_max = (x->x[2]).(qtly)
-_base_mean = mean.(eachrow(_base))
+#_base = reduce(hcat,base)
+#qtly = quantile.(eachrow(_base),Ref([0.25,0.75]))
+#_base_min = (x->x[1]).(qtly)
+#_base_max = (x->x[2]).(qtly)
+#_base_mean = mean.(eachrow(_base))
 
 # Plot inner quartile range of base values
-plt1 = plot(Xs, _base_min, lw=0, fillrange=_base_max, alpha=0.5, color=:blue, label=:none, ylabel="Function")
-plot!(plt1, Xs, _base_mean, color=:blue, label=:none)
+#plt1 = plot(Xs, _base_min, lw=0, fillrange=_base_max, alpha=0.5, color=:blue, label=:none, ylabel="Function")
+#plot!(plt1, Xs, _base_mean, color=:blue, label=:none)
 
 # Combine both plots
-plot(layout=grid(2,1), plt1, plt2)
-savefig("fig/Example_01/sensitivity.png")
+#plot(layout=grid(2,1), plt1, plt2)
+#savefig("fig/Example_01/sensitivity.png")
