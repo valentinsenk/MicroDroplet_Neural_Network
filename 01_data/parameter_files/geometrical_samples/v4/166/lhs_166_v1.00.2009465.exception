@@ -1,0 +1,69 @@
+<Description>
+      ABAQUS/standard rank 0 encountered a SEGMENTATION VIOLATION referencing location (nil)
+
+</Description>
+
+<Step> 1 </Step>
+
+<Procedure> STATIC </Procedure>
+
+
+<Context>
+   ELEMENT LOOP
+</Context>
+
+<Phase>
+   Increment | Attempt | Iteration | Elgen | Elgene | Elgene_contact
+</Phase>
+
+
+<Memory>
+   <Current>            3 GB </Current>
+   <Resident>           1 GB </Resident>
+   <Physical>         504 GB </Physical>
+   <Limit>            403 GB </Limit>
+   <Accessible>       504 GB </Accessible>
+   <Available>        379 GB </Available>
+   <Allocator>            DL </Allocator>
+   <HugePages>        always </HugePages>
+</Memory>
+
+<Swap>
+       <Size>           0 GB </Size>
+       <Used>           0 GB </Used>
+       <Free>           0 GB </Free>
+</Swap>
+
+<Directories>
+  <current> /tmp/vsenk_lhs_166_v1_2004849  </current> <free>    244 GB </free>   <used>      7 GB </used> 
+    <indir> /home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/geometrical_samples/v4/166 </indir>   <free>  26088 GB </free>  
+   <outdir> /home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/geometrical_samples/v4/166 </outdir>  <free>  26088 GB </free> 
+   <tmpdir> /tmp/vsenk_lhs_166_v1_2004849  </tmpdir>  <free>    244 GB </free> 
+</Directories>
+
+<Installation>
+     <Version> 2024 6.24-1 </Version>
+       <Build> 2023_09_21-14.55.25 RELr426 190762 </Build>
+  <Executable> /opt/abaqus/2024/linux_a64/code/bin/standard </Executable>
+</Installation>
+
+<Callstack>
+   1) libABQSMAStaCore.so        0x035899d8 ! std_matinter_    ??:?
+   2) libABQSMAStaCore.so        0x02e811ad ! std_elsinter     ??:?
+   3) libABQSMAStaCore.so        0x02dde23a ! std_elgene_inter_ ??:?
+   4) libABQSMAStaCore.so        0x02b5de14 ! std_contconstraintgene_general_ ??:?
+   5) libABQSMAStaCore.so        0x02b498a2 ! std_contconstraintgen_general_ ??:?
+   6) libABQSMAStaCore.so        0x02d903a5 ! std_elgen_general_ ??:?
+   7) libABQSMAStaCore.so        0x02d78537 ! std_elgen_driver ??:?
+   8) libABQSMAStaCore.so        0x02fe3c13 ! std_exec_linesearch ??:?
+   9) libABQSMAStaCore.so        0x02ffc810 ! std_execs_iteration ??:?
+  10) libABQSMAStaCore.so        0x007d72b0 ! smasta_execs_general ??:?
+  11) libABQSMAStaCore.so        0x019e89f7 ! execproc         ??:?
+  12) libABQSMAStaCore.so        0x003bf24f ! procdriver       ??:?
+  13) libABQSMAStaCore.so        0x04032ae3 ! substep_         ??:?
+  14) libABQSMAStaCore.so        0x019d8492 ! exec             ??:?
+  15) libABQSMAStaCore.so        0x03294dd2 ! std_main         ??:?
+  16) standard                   0x0042e6ad ! ABQmain          ??:?
+  17) standard                   0x0042afb7 ! main             ??:?
+</Callstack>
+
