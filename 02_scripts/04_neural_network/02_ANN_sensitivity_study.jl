@@ -97,7 +97,7 @@ model = Chain(
 ) |> f64
 
 # This is the optimizer
-optim = Flux.setup(Flux.Adam(0.01), model)
+optim = Flux.setup(Flux.Adam(0.001), model)
 
 # This is the batch loader with the minibatch size
 batches = Flux.DataLoader(data_training, batchsize=8, shuffle=true) #batchsize=2 is worse for mechsamples...
