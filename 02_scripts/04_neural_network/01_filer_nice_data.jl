@@ -5,8 +5,8 @@ using DelimitedFiles
 # Define the root directory of samples
 root_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\01_data\\parameter_files"
 #samples = "mechanical_samples\\v2"
-#samples = "geometrical_samples\\v3"
-samples = "all_param_samples\\v1"
+samples = "geometrical_samples\\v4"
+#samples = "all_param_samples\\v1"
 root_dir = joinpath(root_dir, samples)
 
 #### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
@@ -192,15 +192,15 @@ x_max = 0.10
 
 
 # Initialize counters
-count_reach = 0
-count_no_reach = 0
+global count_reach = 0
+global count_no_reach = 0
 # Loop through the data to count how many reach the threshold
 for i in 1:length(all_XY_data)
     X = all_XY_data[i].X
     if maximum(X) >= x_max
-        count_reach += 1  # Increment counter for reaching samples
+        global count_reach += 1  # Increment counter for reaching samples
     else
-        count_no_reach += 1  # Increment counter for non-reaching samples
+        global count_no_reach += 1  # Increment counter for non-reaching samples
     end
 end
 
@@ -294,7 +294,7 @@ p_extrapolated = plot(
 
 # x_max already defined...
 indices_extrapolation_zero = []
-count_extra = 0
+global count_extra = 0
 # Loop through each dataset and check for extrapolation
 for i in 1:length(all_XY_data)
     X = all_XY_data[i].X
@@ -309,7 +309,7 @@ for i in 1:length(all_XY_data)
         all_XY_data_adp[i] = (X = X_extrapolated, Y = Y_extrapolated)
         # Select a line style from the list (cycle through styles)
         line_style = line_styles[mod(i-1, length(line_styles)) + 1]
-        count_extra += 1
+        global count_extra += 1
         plot!(p_extrapolated, X_extrapolated, Y_extrapolated, label="Sample $i", legend=:outerright, linestyle=line_style)
     end
 end
@@ -374,7 +374,7 @@ p_extrapolated_custom = plot(
 
 
 # Counter for the number of extrapolated samples
-count_custom_extrapolated = 0
+global count_custom_extrapolated = 0
 indices_extrapolation_plateau = []
 
 # Loop through each dataset (already loaded)
@@ -391,7 +391,7 @@ for i in 1:length(all_XY_data)
         all_XY_data_adp[i] = (X = X_extrapolated, Y = Y_extrapolated)
         # Select a line style from the list (cycle through styles)
         line_style = line_styles[mod(i-1, length(line_styles)) + 1]
-        count_custom_extrapolated += 1
+        global count_custom_extrapolated += 1
         plot!(p_extrapolated_custom, X_extrapolated, Y_extrapolated, label="Sample $i", legend=:outerright, linestyle=line_style)
     end
 end

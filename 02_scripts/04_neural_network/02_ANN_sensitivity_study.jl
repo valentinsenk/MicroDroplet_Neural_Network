@@ -1,7 +1,7 @@
 ### Load data from filtered script ###
 using JLD2
 
-samples = "geometrical_samples\\v3" #7 parameters here
+samples = "geometrical_samples\\v4" #7 parameters here
 #samples = "mechanical_samples\\v2" #5 parameters here
 #samples = "all_param_samples\\v1" #12 parameters here
 root_results_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\03_results"
@@ -107,7 +107,7 @@ losses_training = Float64[]
 losses_test = Float64[]
 
 # Train for 5000 epochs
-total_epochs = 500
+total_epochs = 1000
 for epoch in 1:total_epochs
     # Print the current epoch dynamically on the same line
     print("\rTraining epoch $epoch / $total_epochs ...")
