@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --nodes=1  # Run all processes on a single node
-#SBATCH --nodelist=node04.imws.tuwien.ac.at #use the new node
+##SBATCH --nodelist=node04.imws.tuwien.ac.at #use the new node
 #SBATCH --ntasks=2  # Use 2 cpu cores
 #SBATCH --job-name=COMPARISON # Job Name
 #SBATCH --time=0-02:00:00  # Time limit hrs:min:sec
@@ -10,7 +10,7 @@
 ####### variables #######
 comparisonfile='compare_results_BASH_v1'
 matlab_script_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/02_scripts/03_postprocessing/'
-root_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/mechanical_samples/v3'
+root_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/mechanical_samples/v4'
 ##########################
 
 # Print running host
