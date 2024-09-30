@@ -1,5 +1,6 @@
 ### Load data from filtered script ###
 using JLD2
+using Dates 
 
 samples = "geometrical_samples\\v4" #7 parameters here
 #samples = "mechanical_samples\\v2" #5 parameters here
@@ -25,6 +26,28 @@ if !isdir(results_dir_ANN)
     mkpath(results_dir_ANN)
     println("Created results directory at: $results_dir_ANN")
 end
+
+using Printf 
+# Function to create a new run directory
+function create_new_run_dir(base_dir::String)
+    # Find existing run directories
+    existing_runs = filter(name -> occursin(r"^run\d{2}$", name), readdir(base_dir))
+    # Extract run numbers
+    run_numbers = parse.(Int, [match(r"^run(\d{2})$", name).captures[1] for name in existing_runs])
+    # Determine the next run number
+    next_run_number = isempty(run_numbers) ? 1 : maximum(run_numbers) + 1
+    # Format the run directory name
+    run_dir_name = @sprintf("run%02d", next_run_number)
+    # Create the full path
+    run_dir = joinpath(base_dir, run_dir_name)
+    # Create the directory
+    mkpath(run_dir)
+    println("Created new run directory at: $run_dir")
+    return run_dir
+end
+
+# Use the function to create the run directory
+results_dir_ANN_run = create_new_run_dir(results_dir_ANN)
 
 
 # Data convention (following Sebis template):
@@ -63,10 +86,14 @@ end
 # Select training and test data
 N_training = Int(ceil(length(Ys)/3*2))
 N_test = length(Ys)-N_training
+
+
+
+## original
 # Randomize IDs for trying different sets
+#
 training_ids = Set(shuffle(1:length(Ys))[1:N_training])
 test_ids = setdiff(Set(1:length(Ys)),training_ids)
-
 # Compose training and test sets (input, label)
 data_training = [ (normalized_params[id], Ys[id]) for id in training_ids]
 data_test = [ (normalized_params[id], Ys[id]) for id in test_ids]
@@ -91,8 +118,10 @@ N_out = length(Xs)
 # The original model is linear in the parameter space so an ANN without an activation function
 # would be sufficient.
 model = Chain(
-    Dense(N_inp => 4*N_inp, relu), #Activation functions: try also tanh
+    Dense(N_inp => 4*N_inp, relu),
+    Dropout(0.5), # to reduce overfit
     Dense(4*N_inp => 4*N_inp, relu),
+    Dropout(0.5),
     Dense(4*N_inp => N_out)
 ) |> f64
 
@@ -100,14 +129,17 @@ model = Chain(
 optim = Flux.setup(Flux.Adam(0.001), model)
 
 # This is the batch loader with the minibatch size
-batches = Flux.DataLoader(data_training, batchsize=8, shuffle=true) #batchsize=2 is worse for mechsamples...
+batch_size = 16
+batches = Flux.DataLoader(data_training, batchsize=batch_size, shuffle=true) #batchsize=2 is worse for mechsamples...
 
 # Init variables for tracking the loss through the epochs
 losses_training = Float64[]
 losses_test = Float64[]
 
+
+
 # Train for 5000 epochs
-total_epochs = 1000
+total_epochs = 5000
 for epoch in 1:total_epochs
     # Print the current epoch dynamically on the same line
     print("\rTraining epoch $epoch / $total_epochs ...")
@@ -129,19 +161,64 @@ end
 # Make sure the final epoch number prints after the loop
 println("\nTraining complete.")
 
+#parameter range information for plots
+parameter_ranges = extrema.(eachrow(reduce(hcat, clean_params)))
+range_text = "Parameter ranges:\n " * join([ "p$i: (" * string(round(l, digits=4)) * "-" * string(round(u, digits=4)) * ")" 
+                                           for (i, (l, u)) in enumerate(parameter_ranges)], ", ")
+
+##### LOG FILE for parameters #####
+# Collect parameters to log with Symbol keys
+params_to_log = Dict(
+    :Date_and_Time => Dates.now(),
+    :Model_Architecture => string(model),
+    :Optimizer => "Adam(0.001)",
+    :Batch_Size => batch_size,
+    :Total_Epochs => total_epochs,
+    :Training_IDs => collect(training_ids),
+    :Test_IDs => collect(test_ids),
+    :Parameter_Ranges => parameter_ranges
+)
+
+# Function to log parameters to a file
+function log_parameters(filepath::String; kwargs...)
+    open(filepath, "w") do io
+        println(io, "Model and Training Parameters:")
+        for (key, value) in kwargs
+            println(io, "$key: $value")
+        end
+    end
+    println("Parameters logged to $filepath")
+end
+
+# Log file path
+log_file_path = joinpath(results_dir_ANN_run, "parameters_log.txt")
+
+# Log the parameters
+log_parameters(log_file_path; params_to_log...)
+
+###############################################################
+
+save_plot_loss_log = joinpath(results_dir_ANN_run, "loss_f_log.png")
+save_plot_loss = joinpath(results_dir_ANN_run, "loss_f.png")
+save_plot_worst = joinpath(results_dir_ANN_run, "n_worst.png")
+save_plot_best = joinpath(results_dir_ANN_run, "n_best.png")
+save_plot_median = joinpath(results_dir_ANN_run, "n_median.png")
+
+
+
 # Plotting the loss
-#p_loss = plot([losses_training, losses_test], label=["training" "test"], yscale=:log10, xlabel="epochs", ylabel="MSE")
+p_loss_log = plot([losses_training, losses_test], label=["training" "test"], yscale=:log10, xlabel="epochs", ylabel="MSE")
+savefig(save_plot_loss_log)
+display(p_loss_log)
+
 p_loss = plot([losses_training, losses_test], label=["training" "test"], xlabel="epochs", ylabel="MSE")
-save_plot_loss = joinpath(results_dir_ANN, "loss_f.png")
+#save_plot_loss = joinpath(results_dir_ANN, "loss_f.png")
 savefig(save_plot_loss)
 display(p_loss)
 
 ### --- make some nice plots --- ###
 
-#parameter range information for plots
-parameter_ranges = extrema.(eachrow(reduce(hcat, clean_params)))
-range_text = "Parameter ranges:\n " * join([ "p$i: (" * string(round(l, digits=4)) * "-" * string(round(u, digits=4)) * ")" 
-                                           for (i, (l, u)) in enumerate(parameter_ranges)], ", ")
+
 
 function generate_param_string(sample_idx)
     params = clean_params[sample_idx]
@@ -157,7 +234,7 @@ p_worst = plot(layout=grid(2,3), plot_title=range_text, plot_titlefontsize=5,
     labels=["prediction" "truth"], 
     title="WORST SAMPLE $(idx)\n$(generate_param_string(idx))",
         titlefont=4, ylims=(0, 20)) for idx in n_max[1:6]]...)
-save_plot_worst = joinpath(results_dir_ANN, "n_worst.png")
+#save_plot_worst = joinpath(results_dir_ANN, "n_worst.png")
 savefig(p_worst, save_plot_worst)
 display(p_worst)
 
@@ -169,7 +246,7 @@ p_best = plot(layout=grid(2, 3), plot_title=range_text, plot_titlefontsize=5,
     labels=["prediction" "truth"], 
     title="BEST SAMPLE $(idx)\n$(generate_param_string(idx))",
         titlefont=4, ylims=(0, 20)) for idx in n_min[1:6]]...)
-save_plot_best = joinpath(results_dir_ANN, "n_best.png")
+#save_plot_best = joinpath(results_dir_ANN, "n_best.png")
 savefig(save_plot_best)
 display(p_best)
 
@@ -182,26 +259,18 @@ p_median = plot(layout=grid(2, 3), plot_title=range_text, plot_titlefontsize=5,
     labels=["prediction" "truth"], 
     title="MEDIAN SAMPLE $(idx)\n$(generate_param_string(idx))",
         titlefont=4, ylims=(0, 20)) for idx in n_middle]...)
-save_plot_median = joinpath(results_dir_ANN, "n_median.png")
+#save_plot_median = joinpath(results_dir_ANN, "n_median.png")
 savefig(save_plot_median)
 display(p_median)
 
 
-# Plotting the mean approximation
-#mean_prediction = mean([model(d[1]) for d in data_test], dims=1)
-#mean_truth = mean([d[2] for d in data_test], dims=1)
-#p_mean = plot(Xs, [mean_prediction, mean_truth], labels=["mean prediction" "mean truth"])
-#save_plot_mean = joinpath(results_dir_ANN, "mean_plot.png")
-#savefig(save_plot_mean)
-#display(p_mean)
+using BSON
+# Save the model after training
+model_file = joinpath(results_dir_ANN_run, "trained_model.bson")
+BSON.@save model_file model
+println("Trained model saved to $model_file")
 
-# Plotting the median approximation
-#median_prediction = median([model(d[1]) for d in data_test], dims=1)
-#median_truth = median([d[2] for d in data_test], dims=1)
-#p_median = plot(Xs, [median_prediction, median_truth], labels=["median prediction" "median truth"])
-#save_plot_median = joinpath(results_dir_ANN, "median_plot.png")
-#savefig(save_plot_median)
-#display(p_median)
+
 
 
 

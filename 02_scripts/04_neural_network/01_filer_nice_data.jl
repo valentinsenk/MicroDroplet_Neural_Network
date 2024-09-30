@@ -5,12 +5,12 @@ using DelimitedFiles
 # Define the root directory of samples
 root_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\01_data\\parameter_files"
 #samples = "mechanical_samples\\v2"
-samples = "mechanical_samples\\v3"
+samples = "geometrical_samples\\v4"
 #samples = "all_param_samples\\v1"
 root_dir = joinpath(root_dir, samples)
 
 #### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
-manual_exceptions = []#[55] #55 at "geometrical_samples\\v3"
+manual_exceptions = [] #[123] for mech v4 #[55] for "geom v3"
 #### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
 
 # Define the root directory for storing results
@@ -535,11 +535,20 @@ println("Clean samples saved to: $plot_file_clean_cut")
 
 ### Resample data even more for input for Sebis ANN SCRIPT
 using Interpolations
+using SavitzkyGolay #to smooth out the linestyle
+
+window_size = 5  # Must be odd
+polynomial_order = 1  # Must be less than window_size
+
 # Resample using linear interpolation
-Xs = range(0, x_max, length=300)
+Xs = range(0, x_max, length=500)
 Ys = map(clean_XY_data) do d
     f = linear_interpolation(d.X, d.Y)
-    f.(Xs)
+    Y_interp = f.(Xs)
+    # Sightly smooth using Savitzky-Golay filter
+    sg = savitzky_golay(Y_interp, window_size, polynomial_order)
+    Y_smooth = sg.y  # The filtered signal is stored in sg.y
+    return Y_smooth
 end
 
 
@@ -554,7 +563,7 @@ p_clean_cut_resample = plot(
 # Plot the resampled data
 for i in 1:length(Ys)
     line_style = line_styles[mod(i-1, length(line_styles)) + 1]
-    plot!(p_clean_cut_resample, Xs, Ys[i], label="Final $i", legend=:outerright, linestyle=line_style)
+    plot!(p_clean_cut_resample, Xs, Ys[i], label="Clean $i", legend=:outerright, linestyle=line_style)
 end
 
 # Display the plot
