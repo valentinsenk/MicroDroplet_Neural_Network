@@ -1,16 +1,16 @@
 #!/bin/bash
 
-#SBATCH --nodes=1  # Run all processes on a single node
-#SBATCH --nodelist=node04.imws.tuwien.ac.at #use the new node
-#SBATCH --ntasks=2  # Use 2 cpu cores
-#SBATCH --job-name=COMPARISON # Job Name
-#SBATCH --time=0-02:00:00  # Time limit hrs:min:sec
-#SBATCH --output=slurm-%j--%x.log  # Standard output and error log
+#SBATCH --nodes=1
+#SBATCH --nodelist=node04.imws.tuwien.ac.at
+#SBATCH --ntasks=2
+#SBATCH --job-name=CREATE_COLLAGE
+#SBATCH --time=0-02:00:00
+#SBATCH --output=slurm-%j--%x.log
 
 ####### variables #######
 python_script_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/02_scripts/03_postprocessing'
-root_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/geometrical_samples/v5'
-output_dir="${root_dir}/_compare_results"  # New folder to store the collage
+root_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/all_param_samples/v1'
+output_dir="${root_dir}/_compare_allresults"
 output_collage="${output_dir}/collage.png"
 ##########################
 
@@ -24,6 +24,9 @@ echo "##########################"
 
 # Create the _compare_results directory if it doesn't exist
 mkdir -p $output_dir
+
+# Activate the Conda environment
+source ~/miniconda3/bin/activate myenv
 
 # RUN PYTHON SCRIPT TO CREATE COLLAGE
 python3 $python_script_dir/create_collage.py --root_dir $root_dir --output $output_collage
