@@ -4,11 +4,11 @@ using DelimitedFiles
 
 # Load JSON file 
 json_dir = "01_data/parameter_ranges"
-json_file = "geometrical_sampling_v5.json"
+json_file = "geometrical_sampling_v6.json"
 
 # Sample output
 num_samples = 300
-output_dir = "01_data/parameter_files/geometrical_samples/v5/"
+output_dir = "01_data/parameter_files/geometrical_samples/v6/"
 
 json_file = joinpath(json_dir, json_file)
 

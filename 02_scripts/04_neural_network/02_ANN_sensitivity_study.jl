@@ -3,11 +3,16 @@ using JLD2
 using Dates 
 
 # List of samples to use (e.g., v4 and v5)
-sample_versions = ["geometrical_samples\\v4", "geometrical_samples\\v5"]
+#sample_versions = ["geometrical_samples\\v4", "geometrical_samples\\v5"]
+sample_versions = ["geometrical_samples\\v5"]
 # Create a combined name for the result folder
 common_prefix = dirname(sample_versions[1])
 version_names = map(basename, sample_versions)
 combined_name = joinpath(common_prefix,join(version_names, "_"))
+
+# Define parameter names based on the sample type (for PLOTS)
+mech_params_names = ["GI", "GII", "t", "i_fric", "b_fric"]
+geom_params_names = ["fd", "D", "D/L", "θ", "ell/r", "φ", "bl_d"]
 
 root_results_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\03_results"
 results_dir = joinpath(root_results_dir, combined_name, "01_filtered_data")
@@ -15,20 +20,26 @@ results_dir_ANN = joinpath(root_results_dir, combined_name, "02_ANN")
 
 # Function to load Xs, Ys, and clean_params from a .jld2 file
 function load_data_from_jld2(filename)
-    @load filename Xs Ys clean_params
+    @load filename Xs Ys clean_params indices_clean
     println("Data loaded from $filename")
-    return Xs, Ys, clean_params
+    return Xs, Ys, clean_params, indices_clean
 end
 
 # Load data from more versions
 Ys_combined = []
 clean_params_combined = []
+indices_combined = []
+Xs = nothing  # This ensures Xs is defined before the loop
 for sample in sample_versions
     load_data_file = joinpath(root_results_dir, sample, "01_filtered_data", "clean_data.jld2")
-    Xs, Ys, clean_params = load_data_from_jld2(load_data_file) 
-    # Append Ys and clean_params
+    Xs_temp, Ys, clean_params, indices = load_data_from_jld2(load_data_file)
+    if Xs === nothing
+        global Xs = Xs_temp
+    end
+    # Append Ys and clean_params, and indices
     append!(Ys_combined, Ys)
     append!(clean_params_combined, clean_params)
+    append!(indices_combined, indices)  # Collect the original indices
 end
 
 
@@ -96,9 +107,7 @@ end
 # Train the neural network
 # Select training and test data
 N_training = Int(ceil(length(Ys_combined)/3*2))
-N_test = length(Ys_combined)-N_training
-
-
+#N_test = length(Ys_combined)-N_training
 
 ## original
 # Randomize IDs for trying different sets
@@ -107,7 +116,9 @@ training_ids = Set(shuffle(1:length(Ys_combined))[1:N_training])
 test_ids = setdiff(Set(1:length(Ys_combined)),training_ids)
 # Compose training and test sets (input, label)
 data_training = [ (normalized_params[id], Ys_combined[id]) for id in training_ids]
+original_ids_training = [ indices_combined[id] for id in training_ids]  # Store original IDs for training data
 data_test = [ (normalized_params[id], Ys_combined[id]) for id in test_ids]
+original_ids_test = [ indices_combined[id] for id in test_ids]  # Store original IDs for test data
 
 # Determine size of layers
 N_inp = length(first(clean_params_combined))
@@ -131,15 +142,16 @@ N_out = length(Xs)
 model = Chain(
     Dense(N_inp => 4*N_inp),
     #Dropout(0.2), # to reduce overfit
-    #LayerNorm(4*N_inp, relu),
-    #Dense(4*N_inp => 4*N_inp),
+    LayerNorm(4*N_inp, relu),
+    Dense(4*N_inp => 4*N_inp),
     #Dropout(0.2),
     LayerNorm(4*N_inp, relu),
     Dense(4*N_inp => N_out)
 ) |> f64
 
 # This is the optimizer
-optim = Flux.setup(Flux.Adam(0.0001), model)
+learning_rate = 0.001
+optim = Flux.setup(Flux.Adam(learning_rate), model)
 
 # This is the batch loader with the minibatch size
 batch_size = 8
@@ -152,7 +164,7 @@ losses_test = Float64[]
 
 
 # Train for 5000 epochs
-total_epochs = 10000
+total_epochs = 1000
 for epoch in 1:total_epochs
     # Print the current epoch dynamically on the same line
     print("\rTraining epoch $epoch / $total_epochs ...")
@@ -174,17 +186,28 @@ end
 # Make sure the final epoch number prints after the loop
 println("\nTraining complete.")
 
+
+# Decide which parameter names to use based on the common prefix (geometrical_sampls, mechanical_samples, etc.)
+if occursin("mechanical_samples", common_prefix)
+    param_names = mech_params_names
+elseif occursin("geometrical_samples", common_prefix)
+    param_names = geom_params_names
+else
+    param_names = vcat(mech_params_names, geom_params_names)
+end
+
 #parameter range information for plots
-parameter_ranges = extrema.(eachrow(reduce(hcat, clean_params)))
-range_text = "Parameter ranges:\n " * join([ "p$i: (" * string(round(l, digits=4)) * "-" * string(round(u, digits=4)) * ")" 
+parameter_ranges = extrema.(eachrow(reduce(hcat, clean_params_combined)))
+range_text = "Parameter ranges:\n " * join([ "$(param_names[i]): (" * string(round(l, digits=4)) * "-" * string(round(u, digits=4)) * ")" 
                                            for (i, (l, u)) in enumerate(parameter_ranges)], ", ")
+
 
 ##### LOG FILE for parameters #####
 # Collect parameters to log with Symbol keys
 params_to_log = Dict(
     :Date_and_Time => Dates.now(),
     :Model_Architecture => string(model),
-    :Optimizer => "Adam(0.0001)",
+    :Optimizer => "Adam($learning_rate)",
     :Batch_Size => batch_size,
     :Total_Epochs => total_epochs,
     :Training_IDs => collect(training_ids),
@@ -234,10 +257,11 @@ display(p_loss)
 
 
 function generate_param_string(sample_idx)
-    params = clean_params[sample_idx]
-    param_str = "p: " * join([ string(round(p, digits=4)) for (i, p) in enumerate(params)], ", ")
+    params = clean_params_combined[sample_idx]
+    param_str = join([ string(param_names[i]) * ": " * string(round(p, digits=4)) for (i, p) in enumerate(params)], ", ")
     return param_str
 end
+
 
 # Plotting the N worst approximations
 test_losses = [Flux.Losses.mse(model(d[1]),d[2]) for d in data_test]
@@ -245,7 +269,7 @@ n_max = sort(collect(1:length(test_losses)), by=i->test_losses[i], rev=true)
 p_worst = plot(layout=grid(2,3), plot_title=range_text, plot_titlefontsize=6,
     [plot(Xs, [model(data_test[idx][1]), data_test[idx][2]], 
     labels=["prediction" "truth"], 
-    title="WORST SAMPLE $(idx)\n$(generate_param_string(idx))", size=(1200, 900),
+    title="WORST SAMPLE [original ID: $(original_ids_test[idx])]\n$(generate_param_string(idx))", size=(1200, 900),
         titlefont=5, ylims=(0, 20)) for idx in n_max[1:6]]...)
 #save_plot_worst = joinpath(results_dir_ANN, "n_worst.png")
 savefig(p_worst, save_plot_worst)
@@ -257,7 +281,7 @@ n_min = sort(collect(1:length(test_losses)), by=i->test_losses[i])  # Sort in as
 p_best = plot(layout=grid(2, 3), plot_title=range_text, plot_titlefontsize=6,
     [plot(Xs, [model(data_test[idx][1]), data_test[idx][2]], 
     labels=["prediction" "truth"], 
-    title="BEST SAMPLE $(idx)\n$(generate_param_string(idx))", size=(1200, 900),
+    title="BEST SAMPLE [original ID: $(original_ids_test[idx])]\n$(generate_param_string(idx))", size=(1200, 900),
         titlefont=5, ylims=(0, 20)) for idx in n_min[1:6]]...)
 #save_plot_best = joinpath(results_dir_ANN, "n_best.png")
 savefig(save_plot_best)
@@ -266,11 +290,11 @@ display(p_best)
 # Plotting samples close to the median of all samples 
 middle_start = Int(floor(length(test_losses) / 2)) - 3  # Start 3 positions before the middle
 middle_end = middle_start + 5  # Take 6 samples
-n_middle = middle_start:middle_end
+n_middle = n_max[middle_start:middle_end]
 p_median = plot(layout=grid(2, 3), plot_title=range_text, plot_titlefontsize=6,
     [plot(Xs, [model(data_test[idx][1]), data_test[idx][2]], 
     labels=["prediction" "truth"], 
-    title="MEDIAN SAMPLE $(idx)\n$(generate_param_string(idx))", size=(1200, 900),
+    title="MEDIAN SAMPLE [original ID: $(original_ids_test[idx])]\n$(generate_param_string(idx))", size=(1200, 900),
         titlefont=5, ylims=(0, 20)) for idx in n_middle]...)
 #save_plot_median = joinpath(results_dir_ANN, "n_median.png")
 savefig(save_plot_median)

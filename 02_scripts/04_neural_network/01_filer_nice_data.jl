@@ -10,7 +10,7 @@ samples = "geometrical_samples\\v5"
 root_dir = joinpath(root_dir, samples)
 
 #### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
-manual_exceptions = [93, 99]#for geom v5 #[81] for geom 4 #[123] for mech v4 #[55] for "geom v3"
+manual_exceptions = [57, 75, 90, 93, 99, 188, 227]#for geom v5 #[81] for geom v4 #[123] for mech v4 #[55] for "geom v3"
 #### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
 
 # Define the root directory for storing results
@@ -578,11 +578,11 @@ savefig(p_clean_cut_resample, plot_file_clean_cut_re)
 #############################
 using JLD2
 # Function to save Xs, Ys, and clean_params to a .jld2 file
-function save_data_to_jld2(filename, Xs, Ys, clean_params)
-    @save filename Xs Ys clean_params
+function save_data_to_jld2(filename, Xs, Ys, clean_params, indices_clean)
+    @save filename Xs Ys clean_params indices_clean
     println("Data saved to $filename")
 end
 
 # Example usage
 save_data_file = joinpath(results_dir, "clean_data.jld2")
-save_data_to_jld2(save_data_file, Xs, Ys, clean_params)
+save_data_to_jld2(save_data_file, Xs, Ys, clean_params, indices_clean)
