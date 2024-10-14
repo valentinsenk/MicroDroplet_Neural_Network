@@ -4,13 +4,14 @@ using DelimitedFiles
 
 # Define the root directory of samples
 root_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\01_data\\parameter_files"
-#samples = "mechanical_samples\\v2"
-samples = "geometrical_samples\\v5"
+#samples = "mechanical_samples\\v4"
+samples = "geometrical_samples\\v6"
 #samples = "all_param_samples\\v1"
 root_dir = joinpath(root_dir, samples)
 
 #### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
-manual_exceptions = [57, 75, 90, 93, 99, 188, 227]#for geom v5 #[81] for geom v4 #[123] for mech v4 #[55] for "geom v3"
+#manual_exceptions = [57, 75, 90, 93, 99, 188, 227]#for geom v5 #[81] for geom v4 #[55] for "geom v3"
+manual_exceptions = [] #for mech v4
 #### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
 
 # Define the root directory for storing results

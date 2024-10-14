@@ -4,7 +4,8 @@ using Dates
 
 # List of samples to use (e.g., v4 and v5)
 #sample_versions = ["geometrical_samples\\v4", "geometrical_samples\\v5"]
-sample_versions = ["geometrical_samples\\v5"]
+#sample_versions = ["mechanical_samples\\v4"]
+sample_versions = ["geometrical_samples\\v6"]
 # Create a combined name for the result folder
 common_prefix = dirname(sample_versions[1])
 version_names = map(basename, sample_versions)
@@ -12,7 +13,7 @@ combined_name = joinpath(common_prefix,join(version_names, "_"))
 
 # Define parameter names based on the sample type (for PLOTS)
 mech_params_names = ["GI", "GII", "t", "i_fric", "b_fric"]
-geom_params_names = ["fd", "D", "D/L", "θ", "ell/r", "φ", "bl_d"]
+geom_params_names = ["fd", "D", "D/L", "θ", "ell/r", "φ", "bl_d"] # θ is contact angle; φ is fiber rotation
 
 root_results_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\03_results"
 results_dir = joinpath(root_results_dir, combined_name, "01_filtered_data")
@@ -117,8 +118,11 @@ test_ids = setdiff(Set(1:length(Ys_combined)),training_ids)
 # Compose training and test sets (input, label)
 data_training = [ (normalized_params[id], Ys_combined[id]) for id in training_ids]
 original_ids_training = [ indices_combined[id] for id in training_ids]  # Store original IDs for training data
+clean_params_combined_training = [ clean_params_combined[id] for id in training_ids]
+
 data_test = [ (normalized_params[id], Ys_combined[id]) for id in test_ids]
 original_ids_test = [ indices_combined[id] for id in test_ids]  # Store original IDs for test data
+clean_params_combined_test = [ clean_params_combined[id] for id in test_ids]
 
 # Determine size of layers
 N_inp = length(first(clean_params_combined))
@@ -140,12 +144,12 @@ N_out = length(Xs)
 # The original model is linear in the parameter space so an ANN without an activation function
 # would be sufficient.
 model = Chain(
-    Dense(N_inp => 4*N_inp),
+    Dense(N_inp => 4*N_inp, relu),
     #Dropout(0.2), # to reduce overfit
-    LayerNorm(4*N_inp, relu),
-    Dense(4*N_inp => 4*N_inp),
+    #LayerNorm(4*N_inp, relu),
+    #Dense(4*N_inp => 4*N_inp, relu),
     #Dropout(0.2),
-    LayerNorm(4*N_inp, relu),
+    #LayerNorm(4*N_inp, relu),
     Dense(4*N_inp => N_out)
 ) |> f64
 
@@ -164,7 +168,7 @@ losses_test = Float64[]
 
 
 # Train for 5000 epochs
-total_epochs = 1000
+total_epochs = 10000
 for epoch in 1:total_epochs
     # Print the current epoch dynamically on the same line
     print("\rTraining epoch $epoch / $total_epochs ...")
@@ -210,8 +214,8 @@ params_to_log = Dict(
     :Optimizer => "Adam($learning_rate)",
     :Batch_Size => batch_size,
     :Total_Epochs => total_epochs,
-    :Training_IDs => collect(training_ids),
-    :Test_IDs => collect(test_ids),
+    :orig_Training_IDs => sort(original_ids_training),
+    :orig_Test_IDs => sort(original_ids_test),
     :Parameter_Ranges => parameter_ranges
 )
 
@@ -255,9 +259,8 @@ display(p_loss)
 ### --- make some nice plots --- ###
 
 
-
 function generate_param_string(sample_idx)
-    params = clean_params_combined[sample_idx]
+    params = clean_params_combined_test[sample_idx]
     param_str = join([ string(param_names[i]) * ": " * string(round(p, digits=4)) for (i, p) in enumerate(params)], ", ")
     return param_str
 end
@@ -315,41 +318,45 @@ println("Trained model saved to $model_file")
 ### UNTIL HERE FIRST TESTS DONE
 ###
 
-#plt = plot()
+plt = plot()
 
 # Compute the range of function values
-#base = [model(collect(ps)) for ps in Iterators.product([range(0,1, length=3) for _ in 1:N_inp]...)]
+base = [model(collect(ps)) for ps in Iterators.product([range(0,1, length=3) for _ in 1:N_inp]...)]
 # Compute the derivative for all parameters at all locations in base
-#sens = [Flux.jacobian(model, collect(ps))[1] for ps in Iterators.product([range(0,1, length=3) for _ in 1:N_inp]...)]
+sens = [Flux.jacobian(model, collect(ps))[1] for ps in Iterators.product([range(0,1, length=3) for _ in 1:N_inp]...)]
 
 # Fit normal distributions to the gradient data
-#dists = [[fit(Normal,[sens[s][i,pidx] for s in eachindex(sens)]) for i in 1:N_out] for pidx in 1:N_inp]
+dists = [[fit(Normal,[sens[s][i,pidx] for s in eachindex(sens)]) for i in 1:N_out] for pidx in 1:N_inp]
 
 # Plot the gradient data
-#colors = palette(:rainbow, N_inp)
-#plt2 = plot(ylabel="Gradient")
-#for (idx,v) in enumerate(["p$i" for i in 1:N_inp])
-#    # Compute quartile
-#    quant_map = hcat(quantile.(dists[idx],Ref([0.25, 0.75]))...)
-#    # Compute mean
-#    μs = map(x->x.μ, dists[idx])
-#    # Plot inner quartile range as shaded area
-#    plot!(plt2, Xs, μs, color=colors[idx], lw=0, ribbon=(μs - quant_map[1,:], quant_map[end,:]-μs), label=:none)
-#    # Plot mean
-#    plot!(plt2, Xs, μs, color=colors[idx], label=v)
-#end
+colors = palette(:rainbow, N_inp)
+plt2 = plot(ylabel="Gradient")
+for (idx,v) in enumerate(param_names)
+    # Compute quartile
+    quant_map = hcat(quantile.(dists[idx],Ref([0.25, 0.75]))...)
+    # Compute mean
+    μs = map(x->x.μ, dists[idx])
+    # Plot inner quartile range as shaded area
+    plot!(plt2, Xs, μs, color=colors[idx], lw=0, ribbon=(μs - quant_map[1,:], quant_map[end,:]-μs), label=:none)
+    # Plot mean
+    plot!(plt2, Xs, μs, color=colors[idx], label=v)
+end
+display(plt2)
 
 # Compute visualization of base values
-#_base = reduce(hcat,base)
-#qtly = quantile.(eachrow(_base),Ref([0.25,0.75]))
-#_base_min = (x->x[1]).(qtly)
-#_base_max = (x->x[2]).(qtly)
-#_base_mean = mean.(eachrow(_base))
+_base = reduce(hcat,base)
+qtly = quantile.(eachrow(_base),Ref([0.25,0.75]))
+_base_min = (x->x[1]).(qtly)
+_base_max = (x->x[2]).(qtly)
+_base_mean = mean.(eachrow(_base))
 
 # Plot inner quartile range of base values
-#plt1 = plot(Xs, _base_min, lw=0, fillrange=_base_max, alpha=0.5, color=:blue, label=:none, ylabel="Function")
-#plot!(plt1, Xs, _base_mean, color=:blue, label=:none)
+plt1 = plot(Xs, _base_min, lw=0, fillrange=_base_max, alpha=0.5, color=:blue, label=:none, ylabel="Function")
+plot!(plt1, Xs, _base_mean, color=:blue, label=:none)
 
 # Combine both plots
-#plot(layout=grid(2,1), plt1, plt2)
-#savefig("fig/Example_01/sensitivity.png")
+p_gradient = plot(layout=grid(2,1), plt1, plt2, size=(1200, 900))
+save_gradient = joinpath(results_dir_ANN_run, "gradient.png")
+
+savefig(save_gradient)
+display(p_gradient)
