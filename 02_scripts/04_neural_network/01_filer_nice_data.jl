@@ -12,7 +12,7 @@ root_dir = joinpath(root_dir, samples)
 #### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
 #manual_exceptions = [57, 75, 90, 93, 99, 188, 227]#for geom v5 #[81] for geom v4 #[55] for "geom v3"
 #manual_exceptions = [123] #for mech v4
-manual_exceptions = [] #for mech v4finer
+manual_exceptions = [105, 123, 270, 193] #for mech v4finer
 #### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
 
 # Define the root directory for storing results

@@ -144,10 +144,10 @@ N_out = length(Xs)
 # The original model is linear in the parameter space so an ANN without an activation function
 # would be sufficient.
 model = Chain(
-    Dense(N_inp => 4*N_inp, relu),
+    Dense(N_inp => 4*N_inp, celu),
     Dropout(0.2), # to reduce overfit
     #LayerNorm(4*N_inp, relu),
-    Dense(4*N_inp => 4*N_inp, relu),
+    Dense(4*N_inp => 4*N_inp, celu),
     Dropout(0.2),
     #LayerNorm(4*N_inp, relu),
     Dense(4*N_inp => N_out)
@@ -213,7 +213,7 @@ function train_model(total_epochs)
 end
 
 # Call the function
-total_epochs = 10000
+total_epochs = 20000
 best_model, losses_training, losses_validation, best_epoch, best_validation_loss = train_model(total_epochs)
 
 best_training_loss = losses_training[best_epoch]
@@ -387,3 +387,7 @@ save_gradient = joinpath(results_dir_ANN_run, "gradient.png")
 
 savefig(save_gradient)
 display(p_gradient)
+
+
+
+

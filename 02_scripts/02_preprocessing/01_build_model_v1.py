@@ -120,8 +120,8 @@ interface_fric = round(params['mechanical_parameters']['interface_friction'], 2)
 blade_fric = round(params['mechanical_parameters']['blade_friction'], 2)#friction between blade and droplet
 
 ### Mesh Parameters ###
-b_seed = 0.0040 # Finest Seed for Blades in mm #Choose e.g. 0.002 for finest, 0.008 for most coarse
-fd_seed = 2 # Choose between 1 - 4 #1 = finest seed for fiber-droplet system
+b_seed = 0.0080 # Finest Seed for Blades in mm #Choose e.g. 0.002 for finest, 0.008 for most coarse
+fd_seed = 3 # Choose between 1 - 4 #1 = finest seed for fiber-droplet system
 
 ### --- log file --- ###
 
