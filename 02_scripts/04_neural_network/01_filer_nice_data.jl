@@ -4,14 +4,15 @@ using DelimitedFiles
 
 # Define the root directory of samples
 root_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\01_data\\parameter_files"
-#samples = "mechanical_samples\\v4"
-samples = "geometrical_samples\\v6"
+samples = "mechanical_samples\\v4finer"
+#samples = "geometrical_samples\\v6"
 #samples = "all_param_samples\\v1"
 root_dir = joinpath(root_dir, samples)
 
 #### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
 #manual_exceptions = [57, 75, 90, 93, 99, 188, 227]#for geom v5 #[81] for geom v4 #[55] for "geom v3"
-manual_exceptions = [] #for mech v4
+#manual_exceptions = [123] #for mech v4
+manual_exceptions = [] #for mech v4finer
 #### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
 
 # Define the root directory for storing results
@@ -538,11 +539,11 @@ println("Clean samples saved to: $plot_file_clean_cut")
 using Interpolations
 using SavitzkyGolay #to smooth out the linestyle
 
-window_size = 5  # Must be odd
+window_size = 3  # Must be odd
 polynomial_order = 1  # Must be less than window_size
 
 # Resample using linear interpolation
-Xs = range(0, x_max, length=500)
+Xs = range(0, x_max, length=200)
 Ys = map(clean_XY_data) do d
     f = linear_interpolation(d.X, d.Y)
     Y_interp = f.(Xs)

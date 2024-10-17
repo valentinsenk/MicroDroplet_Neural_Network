@@ -4,8 +4,8 @@ using Dates
 
 # List of samples to use (e.g., v4 and v5)
 #sample_versions = ["geometrical_samples\\v4", "geometrical_samples\\v5"]
-#sample_versions = ["mechanical_samples\\v4"]
-sample_versions = ["geometrical_samples\\v6"]
+sample_versions = ["mechanical_samples\\v4finer"]
+#sample_versions = ["geometrical_samples\\v6"]
 # Create a combined name for the result folder
 common_prefix = dirname(sample_versions[1])
 version_names = map(basename, sample_versions)
@@ -145,10 +145,10 @@ N_out = length(Xs)
 # would be sufficient.
 model = Chain(
     Dense(N_inp => 4*N_inp, relu),
-    #Dropout(0.2), # to reduce overfit
+    Dropout(0.2), # to reduce overfit
     #LayerNorm(4*N_inp, relu),
-    #Dense(4*N_inp => 4*N_inp, relu),
-    #Dropout(0.2),
+    Dense(4*N_inp => 4*N_inp, relu),
+    Dropout(0.2),
     #LayerNorm(4*N_inp, relu),
     Dense(4*N_inp => N_out)
 ) |> f64
@@ -161,36 +161,64 @@ optim = Flux.setup(Flux.Adam(learning_rate), model)
 batch_size = 8
 batches = Flux.DataLoader(data_training, batchsize=batch_size, shuffle=true) #batchsize=2 is worse for mechsamples...
 
-# Init variables for tracking the loss through the epochs
-losses_training = Float64[]
-losses_test = Float64[]
+using ProgressMeter
 
+function train_model(total_epochs)
+    # Initialize variables
+    losses_training = Float64[]
+    losses_validation = Float64[]
+    best_validation_loss = Inf
+    best_epoch = 0
+    best_model = Flux.state(model)
 
+    # Initialize progress bar without showvalues
+    p = Progress(total_epochs, desc="Training Progress")
 
-# Train for 5000 epochs
-total_epochs = 10000
-for epoch in 1:total_epochs
-    # Print the current epoch dynamically on the same line
-    print("\rTraining epoch $epoch / $total_epochs ...")
-    flush(stdout)
-    # Loop over minibatches
-    for batch in batches
-        # Compute average loss and gradient for the minibatch
-        val, grads = Flux.withgradient(model) do m
-            mean(Flux.Losses.mse(m(input),label) for (input,label) in batch)
+    for epoch in 1:total_epochs
+        # Loop over minibatches
+        for batch in batches
+            val, grads = Flux.withgradient(model) do m
+                mean(Flux.Losses.mse(m(input), label) for (input, label) in batch)
+            end
+            Flux.update!(optim, model, grads[1])
         end
-        # Update the model with the average minibatch gradient
-        Flux.update!(optim, model, grads[1])
+
+        # Compute current training and validation losses
+        current_training_loss = mean(Flux.Losses.mse(model(x), y) for (x, y) in data_training)
+        current_validation_loss = mean(Flux.Losses.mse(model(x), y) for (x, y) in data_test)
+
+        # Update progress bar with current values
+        ProgressMeter.update!(p, epoch; showvalues = [(:Train_Loss, round(current_training_loss, digits=6)),
+                                                        (:Val_Loss, round(current_validation_loss, digits=6))])
+
+        # Store losses
+        push!(losses_training, current_training_loss)
+        push!(losses_validation, current_validation_loss)
+
+        # Update best model if validation loss improves
+        if current_validation_loss < best_validation_loss
+            best_validation_loss = current_validation_loss
+            best_epoch = epoch
+            best_model = Flux.state(model)
+        end
     end
-    # Store the information about the current loss function
-    push!(losses_training,mean(Flux.Losses.mse(model(x),y) for (x,y) in data_training))
-    push!(losses_test,mean(Flux.Losses.mse(model(x),y) for (x,y) in data_test))
+
+    finish!(p)
+    Flux.loadmodel!(model, best_model)
+
+    println("\nTraining complete.")
+    println("Best validation loss at epoch $best_epoch with loss $best_validation_loss")
+
+    return best_model, losses_training, losses_validation, best_epoch, best_validation_loss
 end
 
-# Make sure the final epoch number prints after the loop
-println("\nTraining complete.")
+# Call the function
+total_epochs = 10000
+best_model, losses_training, losses_validation, best_epoch, best_validation_loss = train_model(total_epochs)
 
+best_training_loss = losses_training[best_epoch]
 
+    
 # Decide which parameter names to use based on the common prefix (geometrical_sampls, mechanical_samples, etc.)
 if occursin("mechanical_samples", common_prefix)
     param_names = mech_params_names
@@ -214,6 +242,9 @@ params_to_log = Dict(
     :Optimizer => "Adam($learning_rate)",
     :Batch_Size => batch_size,
     :Total_Epochs => total_epochs,
+    :Best_Epoch => best_epoch,
+    :Best_Training_Loss => best_training_loss,
+    :Best_Validation_Loss => best_validation_loss,
     :orig_Training_IDs => sort(original_ids_training),
     :orig_Test_IDs => sort(original_ids_test),
     :Parameter_Ranges => parameter_ranges
@@ -247,12 +278,15 @@ save_plot_median = joinpath(results_dir_ANN_run, "n_median.png")
 
 
 # Plotting the loss
-p_loss_log = plot([losses_training, losses_test], label=["training" "test"], yscale=:log10, xlabel="epochs", ylabel="MSE", size=(1200, 900))
+p_loss_log = plot([losses_training, losses_validation], label=["training loss" "validation loss"], yscale=:log10, xlabel="epochs", ylabel="MSE", size=(1200, 900))
+# Add vertical line at the best epoch
+vline!(p_loss_log, [best_epoch], label="Best Epoch", linestyle=:dash, color=:red)
 savefig(save_plot_loss_log)
 display(p_loss_log)
 
-p_loss = plot([losses_training, losses_test], label=["training" "test"], xlabel="epochs", ylabel="MSE", size=(1200, 900))
-#save_plot_loss = joinpath(results_dir_ANN, "loss_f.png")
+p_loss = plot([losses_training, losses_validation], label=["training loss" "validation loss"], xlabel="epochs", ylabel="MSE", size=(1200, 900))
+# Add vertical line at the best epoch
+vline!(p_loss, [best_epoch], label="Best Epoch", linestyle=:dash, color=:red)
 savefig(save_plot_loss)
 display(p_loss)
 
@@ -310,13 +344,6 @@ model_file = joinpath(results_dir_ANN_run, "trained_model.bson")
 BSON.@save model_file model
 println("Trained model saved to $model_file")
 
-
-
-
-
-###
-### UNTIL HERE FIRST TESTS DONE
-###
 
 plt = plot()
 
