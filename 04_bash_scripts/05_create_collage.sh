@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --nodes=1
-##SBATCH --nodelist=node04.imws.tuwien.ac.at
+#SBATCH --nodelist=node04.imws.tuwien.ac.at
 #SBATCH --ntasks=2
 #SBATCH --job-name=CREATE_COLLAGE
 #SBATCH --time=0-02:00:00
@@ -9,7 +9,7 @@
 
 ####### variables #######
 python_script_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/02_scripts/03_postprocessing'
-root_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/geometrical_samples/v6'
+root_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/mechanical_samples/v4finer'
 output_dir="${root_dir}/_compare_allresults"
 output_collage="${output_dir}/collage.png"
 ##########################
