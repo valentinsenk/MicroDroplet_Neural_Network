@@ -1,23 +1,61 @@
-### Load data from filtered script ###
 using JLD2
 using Dates 
+using Interpolations
+using Flux
+using Random
+using Statistics
+using Distributions
+using Plots
+using ProgressMeter
+using Printf 
 
-# List of samples to use (e.g., v4 and v5)
 #sample_versions = ["geometrical_samples\\v4", "geometrical_samples\\v5"]
 sample_versions = ["mechanical_samples\\v4finer"]
-#sample_versions = ["geometrical_samples\\v6"]
-# Create a combined name for the result folder
-common_prefix = dirname(sample_versions[1])
-version_names = map(basename, sample_versions)
-combined_name = joinpath(common_prefix,join(version_names, "_"))
+
+total_epochs = 100000
+random_seed = 1234
+Random.seed!(random_seed) #set random seed for reproducibility (hyperparameter changing)
+
 
 # Define parameter names based on the sample type (for PLOTS)
 mech_params_names = ["GI", "GII", "t", "i_fric", "b_fric"]
-geom_params_names = ["fd", "D", "D/L", "θ", "ell/r", "φ", "bl_d"] # θ is contact angle; φ is fiber rotation
+geom_params_names = ["fd", "D", "L/D", "θ", "ell/r", "φ", "bl_d"] # θ is contact angle; φ is fiber rotation
+selected_params01_names = ["GII", "t", "fd", "D", "bl_d"]
+selected_params02_names = [ ]
 
-root_results_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\03_results"
+### ------ Filestructure and Dir creation ------ ###
+root_results_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\03_results" #results folder
+
+common_prefix = dirname(sample_versions[1])
+version_names = map(basename, sample_versions)
+combined_name = joinpath(common_prefix,join(version_names, "_"))
 results_dir = joinpath(root_results_dir, combined_name, "01_filtered_data")
 results_dir_ANN = joinpath(root_results_dir, combined_name, "02_ANN")
+
+if !isdir(results_dir_ANN)
+    mkpath(results_dir_ANN)
+    println("Created results directory at: $results_dir_ANN")
+end
+
+# Function to create a new run directory
+function create_new_run_dir(base_dir::String)
+    # Find existing und build run directory
+    existing_runs = filter(name -> occursin(r"^run\d{2}$", name), readdir(base_dir))
+    run_numbers = parse.(Int, [match(r"^run(\d{2})$", name).captures[1] for name in existing_runs])
+    next_run_number = isempty(run_numbers) ? 1 : maximum(run_numbers) + 1
+    run_dir_name = @sprintf("run%02d", next_run_number)
+    run_dir = joinpath(base_dir, run_dir_name)
+    # Create the directory
+    mkpath(run_dir)
+    println("Created new run directory at: $run_dir")
+    return run_dir
+end
+
+results_dir_ANN_run = create_new_run_dir(results_dir_ANN)
+### ------------------------------------------- ###
+
+
+### --- Load filtered data -------------------- ### 
 
 # Function to load Xs, Ys, and clean_params from a .jld2 file
 function load_data_from_jld2(filename)
@@ -26,7 +64,7 @@ function load_data_from_jld2(filename)
     return Xs, Ys, clean_params, indices_clean
 end
 
-# Load data from more versions
+# Load data if there are more directories/versions specified 
 Ys_combined = []
 clean_params_combined = []
 indices_combined = []
@@ -42,62 +80,12 @@ for sample in sample_versions
     append!(clean_params_combined, clean_params)
     append!(indices_combined, indices)  # Collect the original indices
 end
+### -------------------------------------------- ### 
 
 
-# Create the results directory FOR ANN if it does not exist
-if !isdir(results_dir_ANN)
-    mkpath(results_dir_ANN)
-    println("Created results directory at: $results_dir_ANN")
-end
-
-using Printf 
-# Function to create a new run directory
-function create_new_run_dir(base_dir::String)
-    # Find existing run directories
-    existing_runs = filter(name -> occursin(r"^run\d{2}$", name), readdir(base_dir))
-    # Extract run numbers
-    run_numbers = parse.(Int, [match(r"^run(\d{2})$", name).captures[1] for name in existing_runs])
-    # Determine the next run number
-    next_run_number = isempty(run_numbers) ? 1 : maximum(run_numbers) + 1
-    # Format the run directory name
-    run_dir_name = @sprintf("run%02d", next_run_number)
-    # Create the full path
-    run_dir = joinpath(base_dir, run_dir_name)
-    # Create the directory
-    mkpath(run_dir)
-    println("Created new run directory at: $run_dir")
-    return run_dir
-end
-
-# Use the function to create the run directory
-results_dir_ANN_run = create_new_run_dir(results_dir_ANN)
-
-
-# Data convention (following Sebis template):
-# - The XY data for the load displacement plot is a list of named tuples with entries .X and .Y.
-# - The respective parameters are in a vector of vectors with the subvector as [p1, p2, p3, ...]
-# While the test data is evenly sampled, for the sake of generality of this code, it is assumed
-# to be sampled unevenly.
-
-using Interpolations
-using Flux
-using Random
-using Statistics
-using Distributions
-using Plots
-
-### Plot new data for test reasons
-# Create a plot with index numbering as the legend
-#plot(title="Resampled Data", xlabel="X", ylabel="Y")
-
-
-#for i in 1:length(Ys)
-#    plot!(Xs, Ys[i], label="Sample $i")
-#end
-
-# Add a legend outside the plot
-#plot!(legend=:outerright)
-
+#######################
+###### ANN Model ######
+#######################
 
 # Normalize input parameters
 parameter_ranges_from_data = extrema.(eachrow(reduce(hcat, clean_params_combined)))
@@ -105,14 +93,10 @@ normalized_params = map(clean_params_combined) do p
     [(p[i]-l)/(u-l) for (i,(l,u)) in enumerate(parameter_ranges_from_data)]
 end
 
-# Train the neural network
 # Select training and test data
 N_training = Int(ceil(length(Ys_combined)/3*2))
-#N_test = length(Ys_combined)-N_training
 
-## original
 # Randomize IDs for trying different sets
-#
 training_ids = Set(shuffle(1:length(Ys_combined))[1:N_training])
 test_ids = setdiff(Set(1:length(Ys_combined)),training_ids)
 # Compose training and test sets (input, label)
@@ -124,32 +108,18 @@ data_test = [ (normalized_params[id], Ys_combined[id]) for id in test_ids]
 original_ids_test = [ indices_combined[id] for id in test_ids]  # Store original IDs for test data
 clean_params_combined_test = [ clean_params_combined[id] for id in test_ids]
 
+### --- This is the big model --- ###
+
 # Determine size of layers
 N_inp = length(first(clean_params_combined))
 N_out = length(Xs)
 
-# Define the model.
-# This model worked quite well for this specific problem.
-# However, the hyperparameters
-# - Number of layers
-# - Size of layers
-# - Activation functions (https://fluxml.ai/Flux.jl/stable/reference/models/activation/)
-# - Optimizers and learning rates (https://fluxml.ai/Flux.jl/stable/reference/training/optimisers/)
-# - Minibatch size 
-# - Number of epochs
-# need to be assessed for each new problem.
-
 # This is the actual model
-# The reul function is just added to highlight usage of activation functions.
-# The original model is linear in the parameter space so an ANN without an activation function
-# would be sufficient.
 model = Chain(
     Dense(N_inp => 4*N_inp, celu),
     Dropout(0.2), # to reduce overfit
-    #LayerNorm(4*N_inp, relu),
     Dense(4*N_inp => 4*N_inp, celu),
     Dropout(0.2),
-    #LayerNorm(4*N_inp, relu),
     Dense(4*N_inp => N_out)
 ) |> f64
 
@@ -161,10 +131,9 @@ optim = Flux.setup(Flux.Adam(learning_rate), model)
 batch_size = 8
 batches = Flux.DataLoader(data_training, batchsize=batch_size, shuffle=true) #batchsize=2 is worse for mechsamples...
 
-using ProgressMeter
-
 function train_model(total_epochs)
     # Initialize variables
+    start_time = Dates.now()
     losses_training = Float64[]
     losses_validation = Float64[]
     best_validation_loss = Inf
@@ -209,21 +178,34 @@ function train_model(total_epochs)
     println("\nTraining complete.")
     println("Best validation loss at epoch $best_epoch with loss $best_validation_loss")
 
-    return best_model, losses_training, losses_validation, best_epoch, best_validation_loss
+    total_runtime = Dates.now() - start_time
+    return best_model, losses_training, losses_validation, best_epoch, best_validation_loss, total_runtime
 end
 
-# Call the function
-total_epochs = 20000
-best_model, losses_training, losses_validation, best_epoch, best_validation_loss = train_model(total_epochs)
-
+best_model, losses_training, losses_validation, best_epoch, best_validation_loss, total_runtime = train_model(total_epochs)
 best_training_loss = losses_training[best_epoch]
 
-    
+
+### ----- additionally trained model for 2nd derivative ----- ###
+
+### INSERT HERE ###
+
+###
+
+
+
+#############################
+### Postprocess ANN Model ###
+#############################
+
+############# Get parameter names for Plotting #############
 # Decide which parameter names to use based on the common prefix (geometrical_sampls, mechanical_samples, etc.)
 if occursin("mechanical_samples", common_prefix)
     param_names = mech_params_names
 elseif occursin("geometrical_samples", common_prefix)
     param_names = geom_params_names
+elseif occursin("selected_param_samples", common_prefix)
+    param_names = selected_params01_names
 else
     param_names = vcat(mech_params_names, geom_params_names)
 end
@@ -233,72 +215,23 @@ parameter_ranges = extrema.(eachrow(reduce(hcat, clean_params_combined)))
 range_text = "Parameter ranges:\n " * join([ "$(param_names[i]): (" * string(round(l, digits=4)) * "-" * string(round(u, digits=4)) * ")" 
                                            for (i, (l, u)) in enumerate(parameter_ranges)], ", ")
 
-
-##### LOG FILE for parameters #####
-# Collect parameters to log with Symbol keys
-params_to_log = Dict(
-    :Date_and_Time => Dates.now(),
-    :Model_Architecture => string(model),
-    :Optimizer => "Adam($learning_rate)",
-    :Batch_Size => batch_size,
-    :Total_Epochs => total_epochs,
-    :Best_Epoch => best_epoch,
-    :Best_Training_Loss => best_training_loss,
-    :Best_Validation_Loss => best_validation_loss,
-    :orig_Training_IDs => sort(original_ids_training),
-    :orig_Test_IDs => sort(original_ids_test),
-    :Parameter_Ranges => parameter_ranges
-)
-
-# Function to log parameters to a file
-function log_parameters(filepath::String; kwargs...)
-    open(filepath, "w") do io
-        println(io, "Model and Training Parameters:")
-        for (key, value) in kwargs
-            println(io, "$key: $value")
-        end
-    end
-    println("Parameters logged to $filepath")
-end
-
-# Log file path
-log_file_path = joinpath(results_dir_ANN_run, "parameters_log.txt")
-
-# Log the parameters
-log_parameters(log_file_path; params_to_log...)
-
-###############################################################
-
-save_plot_loss_log = joinpath(results_dir_ANN_run, "loss_f_log.png")
-save_plot_loss = joinpath(results_dir_ANN_run, "loss_f.png")
-save_plot_worst = joinpath(results_dir_ANN_run, "n_worst.png")
-save_plot_best = joinpath(results_dir_ANN_run, "n_best.png")
-save_plot_median = joinpath(results_dir_ANN_run, "n_median.png")
-
-
-
-# Plotting the loss
-p_loss_log = plot([losses_training, losses_validation], label=["training loss" "validation loss"], yscale=:log10, xlabel="epochs", ylabel="MSE", size=(1200, 900))
-# Add vertical line at the best epoch
-vline!(p_loss_log, [best_epoch], label="Best Epoch", linestyle=:dash, color=:red)
-savefig(save_plot_loss_log)
-display(p_loss_log)
-
-p_loss = plot([losses_training, losses_validation], label=["training loss" "validation loss"], xlabel="epochs", ylabel="MSE", size=(1200, 900))
-# Add vertical line at the best epoch
-vline!(p_loss, [best_epoch], label="Best Epoch", linestyle=:dash, color=:red)
-savefig(save_plot_loss)
-display(p_loss)
-
-### --- make some nice plots --- ###
-
-
 function generate_param_string(sample_idx)
     params = clean_params_combined_test[sample_idx]
     param_str = join([ string(param_names[i]) * ": " * string(round(p, digits=4)) for (i, p) in enumerate(params)], ", ")
     return param_str
-end
+end                                           
+###############################################################
 
+save_plot_loss_log = joinpath(results_dir_ANN_run, "loss_f_log.png")
+save_plot_worst = joinpath(results_dir_ANN_run, "n_worst.png")
+save_plot_best = joinpath(results_dir_ANN_run, "n_best.png")
+save_plot_median = joinpath(results_dir_ANN_run, "n_median.png")
+
+# Plotting the loss
+p_loss_log = plot([losses_training, losses_validation], label=["training loss" "validation loss"], yscale=:log10, xlabel="epochs", ylabel="MSE", size=(1200, 900))
+vline!(p_loss_log, [best_epoch], label="Best Epoch", linestyle=:dash, color=:red)
+savefig(save_plot_loss_log)
+display(p_loss_log)
 
 # Plotting the N worst approximations
 test_losses = [Flux.Losses.mse(model(d[1]),d[2]) for d in data_test]
@@ -308,10 +241,8 @@ p_worst = plot(layout=grid(2,3), plot_title=range_text, plot_titlefontsize=6,
     labels=["prediction" "truth"], 
     title="WORST SAMPLE [original ID: $(original_ids_test[idx])]\n$(generate_param_string(idx))", size=(1200, 900),
         titlefont=5, ylims=(0, 20)) for idx in n_max[1:6]]...)
-#save_plot_worst = joinpath(results_dir_ANN, "n_worst.png")
 savefig(p_worst, save_plot_worst)
 display(p_worst)
-
 
 # Plotting the N best approximations
 n_min = sort(collect(1:length(test_losses)), by=i->test_losses[i])  # Sort in ascending order for the best losses
@@ -320,7 +251,6 @@ p_best = plot(layout=grid(2, 3), plot_title=range_text, plot_titlefontsize=6,
     labels=["prediction" "truth"], 
     title="BEST SAMPLE [original ID: $(original_ids_test[idx])]\n$(generate_param_string(idx))", size=(1200, 900),
         titlefont=5, ylims=(0, 20)) for idx in n_min[1:6]]...)
-#save_plot_best = joinpath(results_dir_ANN, "n_best.png")
 savefig(save_plot_best)
 display(p_best)
 
@@ -333,10 +263,8 @@ p_median = plot(layout=grid(2, 3), plot_title=range_text, plot_titlefontsize=6,
     labels=["prediction" "truth"], 
     title="MEDIAN SAMPLE [original ID: $(original_ids_test[idx])]\n$(generate_param_string(idx))", size=(1200, 900),
         titlefont=5, ylims=(0, 20)) for idx in n_middle]...)
-#save_plot_median = joinpath(results_dir_ANN, "n_median.png")
 savefig(save_plot_median)
 display(p_median)
-
 
 using BSON
 # Save the model after training
@@ -346,7 +274,6 @@ println("Trained model saved to $model_file")
 
 
 plt = plot()
-
 # Compute the range of function values
 base = [model(collect(ps)) for ps in Iterators.product([range(0,1, length=3) for _ in 1:N_inp]...)]
 # Compute the derivative for all parameters at all locations in base
@@ -389,5 +316,52 @@ savefig(save_gradient)
 display(p_gradient)
 
 
+#######################################
+##### LOG FILE for ANN parameters #####
+#######################################
+
+function format_runtime(runtime::Dates.Period)
+    # Convert the period to total seconds
+    total_seconds = Dates.value(runtime) / 1000  # Since Dates.value returns milliseconds
+    hours = floor(Int, total_seconds / 3600)
+    minutes = floor(Int, (total_seconds % 3600) / 60)
+    seconds = round(total_seconds % 60, digits=2)
+    return "$(hours)h $(minutes)m $(seconds)s"
+end
 
 
+function log_parameters(filepath::String; kwargs...)
+    open(filepath, "w") do io
+        println(io, "Model and Training Parameters:")
+        for (key, value) in kwargs
+            if key == :Total_Runtime
+                formatted_runtime = format_runtime(value)
+                println(io, "$key: $formatted_runtime")
+            else
+                println(io, "$key: $value")
+            end
+        end
+    end
+    println("Parameters logged to $filepath")
+end
+
+# Collect parameters to log with Symbol keys
+params_to_log = Dict(
+    :Date_and_Time => Dates.now(),
+    :Model_Architecture => string(model),
+    :Optimizer => "Adam($learning_rate)",
+    :Batch_Size => batch_size,
+    :Total_Epochs => total_epochs,
+    :Best_Epoch => best_epoch,
+    :Best_Training_Loss => best_training_loss,
+    :Best_Validation_Loss => best_validation_loss,
+    :orig_Training_IDs => sort(original_ids_training),
+    :orig_Test_IDs => sort(original_ids_test),
+    :Parameter_Ranges => parameter_ranges,
+    :Total_Runtime => total_runtime,
+    :Random_Seed_Number => random_seed
+)
+
+log_file_path = joinpath(results_dir_ANN_run, "parameters_log.txt")
+log_parameters(log_file_path; params_to_log...)
+######################################################################
