@@ -1,4 +1,5 @@
 using JLD2
+using BSON
 using Dates 
 using Interpolations
 using Flux
@@ -7,12 +8,17 @@ using Statistics
 using Distributions
 using Plots
 using ProgressMeter
-using Printf 
+using Printf
+## new
+using FileIO
+using CairoMakie
+using LinearAlgebra
+using Trapz
 
 #sample_versions = ["geometrical_samples\\v4", "geometrical_samples\\v5"]
 sample_versions = ["mechanical_samples\\v4finer"]
 
-total_epochs = 100000
+total_epochs = 5000
 random_seed = 1234
 Random.seed!(random_seed) #set random seed for reproducibility (hyperparameter changing)
 
@@ -185,18 +191,14 @@ end
 best_model, losses_training, losses_validation, best_epoch, best_validation_loss, total_runtime = train_model(total_epochs)
 best_training_loss = losses_training[best_epoch]
 
+# Save the model after training
+model_file = joinpath(results_dir_ANN_run, "trained_model.bson")
+BSON.@save model_file model
+println("Trained model saved to $model_file")
 
-### ----- additionally trained model for 2nd derivative ----- ###
-
-### INSERT HERE ###
-
-###
-
-
-
-#############################
-### Postprocess ANN Model ###
-#############################
+##############################
+### PLOT ANN Model results ###
+##############################
 
 ############# Get parameter names for Plotting #############
 # Decide which parameter names to use based on the common prefix (geometrical_sampls, mechanical_samples, etc.)
@@ -210,7 +212,6 @@ else
     param_names = vcat(mech_params_names, geom_params_names)
 end
 
-#parameter range information for plots
 parameter_ranges = extrema.(eachrow(reduce(hcat, clean_params_combined)))
 range_text = "Parameter ranges:\n " * join([ "$(param_names[i]): (" * string(round(l, digits=4)) * "-" * string(round(u, digits=4)) * ")" 
                                            for (i, (l, u)) in enumerate(parameter_ranges)], ", ")
@@ -219,13 +220,14 @@ function generate_param_string(sample_idx)
     params = clean_params_combined_test[sample_idx]
     param_str = join([ string(param_names[i]) * ": " * string(round(p, digits=4)) for (i, p) in enumerate(params)], ", ")
     return param_str
-end                                           
-###############################################################
+end     
+#######                                      
 
 save_plot_loss_log = joinpath(results_dir_ANN_run, "loss_f_log.png")
 save_plot_worst = joinpath(results_dir_ANN_run, "n_worst.png")
 save_plot_best = joinpath(results_dir_ANN_run, "n_best.png")
 save_plot_median = joinpath(results_dir_ANN_run, "n_median.png")
+save_gradient = joinpath(results_dir_ANN_run, "gradient.png")
 
 # Plotting the loss
 p_loss_log = plot([losses_training, losses_validation], label=["training loss" "validation loss"], yscale=:log10, xlabel="epochs", ylabel="MSE", size=(1200, 900))
@@ -266,19 +268,11 @@ p_median = plot(layout=grid(2, 3), plot_title=range_text, plot_titlefontsize=6,
 savefig(save_plot_median)
 display(p_median)
 
-using BSON
-# Save the model after training
-model_file = joinpath(results_dir_ANN_run, "trained_model.bson")
-BSON.@save model_file model
-println("Trained model saved to $model_file")
 
-
-plt = plot()
 # Compute the range of function values
 base = [model(collect(ps)) for ps in Iterators.product([range(0,1, length=3) for _ in 1:N_inp]...)]
 # Compute the derivative for all parameters at all locations in base
 sens = [Flux.jacobian(model, collect(ps))[1] for ps in Iterators.product([range(0,1, length=3) for _ in 1:N_inp]...)]
-
 # Fit normal distributions to the gradient data
 dists = [[fit(Normal,[sens[s][i,pidx] for s in eachindex(sens)]) for i in 1:N_out] for pidx in 1:N_inp]
 
@@ -295,7 +289,6 @@ for (idx,v) in enumerate(param_names)
     # Plot mean
     plot!(plt2, Xs, μs, color=colors[idx], label=v)
 end
-display(plt2)
 
 # Compute visualization of base values
 _base = reduce(hcat,base)
@@ -305,15 +298,112 @@ _base_max = (x->x[2]).(qtly)
 _base_mean = mean.(eachrow(_base))
 
 # Plot inner quartile range of base values
-plt1 = plot(Xs, _base_min, lw=0, fillrange=_base_max, alpha=0.5, color=:blue, label=:none, ylabel="Function")
-plot!(plt1, Xs, _base_mean, color=:blue, label=:none)
+colors_red = palette(:reds)
+plt1 = plot(Xs, _base_min, lw=0, fillrange=_base_max, alpha=0.5, color=colors_red[1], label=:none, ylabel="Function")
+plot!(plt1, Xs, _base_mean, color=colors_red[2], label=:none)
 
-# Combine both plots
+# Combine both plots and display
 p_gradient = plot(layout=grid(2,1), plt1, plt2, size=(1200, 900))
-save_gradient = joinpath(results_dir_ANN_run, "gradient.png")
-
 savefig(save_gradient)
 display(p_gradient)
+
+################################
+### New Model for Max Stress ###
+################################
+
+Ys_combined_max_stress = map(Ys_combined) do Y
+    maximum(Y)
+end
+
+# Compose training and test sets (input, label) with max stress values
+data_training2 = [ (normalized_params[id], Ys_combined_max_stress[id]) for id in training_ids]
+data_test2 = [ (normalized_params[id], Ys_combined_max_stress[id]) for id in test_ids]
+
+N_out_max = 1  # Since max stress is a scalar
+
+model_max_stress = Chain(
+    Dense(N_inp => 4*N_inp, celu),
+    #Dense(4*N_inp => 4*N_inp, celu),
+    Dense(4*N_inp => N_out_max)
+) |> f64
+
+# This is the batch loader with the minibatch size
+batch_size = 4
+batches = Flux.DataLoader(data_training2, batchsize=batch_size, shuffle=true) 
+
+learning_rate2 = 0.0001
+optim = Flux.setup(Flux.Adam(learning_rate2), model_max_stress)
+
+total_epochs_max_stress = 20000
+function train_max_stress_model(total_epochs_max_stress)
+    # Initialize variables
+    start_time = Dates.now()
+    losses_training = Float64[]
+    losses_validation = Float64[]
+    best_validation_loss = Inf
+    best_epoch = 0
+    best_model = Flux.state(model_max_stress)
+    
+    # Initialize progress bar
+    p = Progress(total_epochs, desc="Training Max Stress Model")
+
+    # Start training loop
+    for epoch in 1:total_epochs_max_stress
+        # Loop over minibatches
+        for batch in batches
+            val, grads = Flux.withgradient(model_max_stress) do m
+                mean(Flux.Losses.mse(m(input), label) for (input, label) in batch)
+            end
+            # Update the model using the gradients
+            Flux.update!(optim, model_max_stress, grads[1])
+        end
+
+        # Compute current training and validation losses
+        current_training_loss = mean(Flux.Losses.mse(model_max_stress(x), y) for (x, y) in data_training2)
+        current_validation_loss = mean(Flux.Losses.mse(model_max_stress(x), y) for (x, y) in data_test2)
+
+        # Update progress bar with current losses
+        ProgressMeter.update!(p, epoch; showvalues = [(:Train_Loss, round(current_training_loss, digits=6)),
+                                                      (:Val_Loss, round(current_validation_loss, digits=6))])
+
+        # Store the losses for future reference
+        push!(losses_training, current_training_loss)
+        push!(losses_validation, current_validation_loss)
+
+        # Save the best model if validation loss improves
+        if current_validation_loss < best_validation_loss
+            best_validation_loss = current_validation_loss
+            best_epoch = epoch
+            best_model = Flux.state(model_max_stress)
+        end
+    end
+
+    finish!(p)  # Finalize the progress bar
+
+    # Load the best model
+    Flux.loadmodel!(model_max_stress, best_model)
+
+    # Print summary of training results
+    println("\nTraining complete.")
+    println("Best validation loss at epoch $best_epoch with loss $best_validation_loss")
+
+    total_runtime = Dates.now() - start_time
+
+    return best_model, losses_training, losses_validation, best_epoch, best_validation_loss, total_runtime
+end
+
+best_model2, losses_training2, losses_validation2, best_epoch2, best_validation_loss2, total_runtime2 = train_max_stress_model(total_epochs_max_stress)
+best_training_loss2 = losses_training2[best_epoch2]
+
+save_plot_loss_log_max_stress = joinpath(results_dir_ANN_run, "loss_f_log_max_stress.png")
+# Plotting the loss
+p_loss_log_max_stress = plot([losses_training2, losses_validation2], label=["training loss for max stress" "validation loss for max stress"], yscale=:log10, xlabel="epochs", ylabel="MSE", size=(1200, 900))
+vline!(p_loss_log_max_stress, [best_epoch2], label="Best Epoch", linestyle=:dash, color=:red)
+savefig(save_plot_loss_log_max_stress)
+display(p_loss_log_max_stress)
+
+
+
 
 
 #######################################
