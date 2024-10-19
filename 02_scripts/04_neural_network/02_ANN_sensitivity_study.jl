@@ -11,14 +11,15 @@ using ProgressMeter
 using Printf
 ## new
 using FileIO
-using CairoMakie
+#using CairoMakie
 using LinearAlgebra
 using Trapz
 
 #sample_versions = ["geometrical_samples\\v4", "geometrical_samples\\v5"]
-sample_versions = ["mechanical_samples\\v4finer"]
+#sample_versions = ["mechanical_samples\\v4finer"]
+sample_versions = ["selected_param_samples\\v1"]
 
-total_epochs = 5000
+total_epochs = 10000
 random_seed = 1234
 Random.seed!(random_seed) #set random seed for reproducibility (hyperparameter changing)
 
