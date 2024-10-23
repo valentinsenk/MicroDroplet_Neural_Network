@@ -16,8 +16,8 @@ using LinearAlgebra
 using Trapz
 
 #sample_versions = ["geometrical_samples\\v4", "geometrical_samples\\v5"]
-#sample_versions = ["mechanical_samples\\v4finer"]
-sample_versions = ["selected_param_samples\\v1"]
+sample_versions = ["mechanical_samples\\v4finer"]
+#sample_versions = ["selected_param_samples\\v1"]
 
 total_epochs = 10000
 random_seed = 1234
@@ -307,104 +307,6 @@ plot!(plt1, Xs, _base_mean, color=colors_red[2], label=:none)
 p_gradient = plot(layout=grid(2,1), plt1, plt2, size=(1200, 900))
 savefig(save_gradient)
 display(p_gradient)
-
-################################
-### New Model for Max Stress ###
-################################
-
-Ys_combined_max_stress = map(Ys_combined) do Y
-    maximum(Y)
-end
-
-# Compose training and test sets (input, label) with max stress values
-data_training2 = [ (normalized_params[id], Ys_combined_max_stress[id]) for id in training_ids]
-data_test2 = [ (normalized_params[id], Ys_combined_max_stress[id]) for id in test_ids]
-
-N_out_max = 1  # Since max stress is a scalar
-
-model_max_stress = Chain(
-    Dense(N_inp => 4*N_inp, celu),
-    #Dense(4*N_inp => 4*N_inp, celu),
-    Dense(4*N_inp => N_out_max)
-) |> f64
-
-# This is the batch loader with the minibatch size
-batch_size = 4
-batches = Flux.DataLoader(data_training2, batchsize=batch_size, shuffle=true) 
-
-learning_rate2 = 0.0001
-optim = Flux.setup(Flux.Adam(learning_rate2), model_max_stress)
-
-total_epochs_max_stress = 20000
-function train_max_stress_model(total_epochs_max_stress)
-    # Initialize variables
-    start_time = Dates.now()
-    losses_training = Float64[]
-    losses_validation = Float64[]
-    best_validation_loss = Inf
-    best_epoch = 0
-    best_model = Flux.state(model_max_stress)
-    
-    # Initialize progress bar
-    p = Progress(total_epochs, desc="Training Max Stress Model")
-
-    # Start training loop
-    for epoch in 1:total_epochs_max_stress
-        # Loop over minibatches
-        for batch in batches
-            val, grads = Flux.withgradient(model_max_stress) do m
-                mean(Flux.Losses.mse(m(input), label) for (input, label) in batch)
-            end
-            # Update the model using the gradients
-            Flux.update!(optim, model_max_stress, grads[1])
-        end
-
-        # Compute current training and validation losses
-        current_training_loss = mean(Flux.Losses.mse(model_max_stress(x), y) for (x, y) in data_training2)
-        current_validation_loss = mean(Flux.Losses.mse(model_max_stress(x), y) for (x, y) in data_test2)
-
-        # Update progress bar with current losses
-        ProgressMeter.update!(p, epoch; showvalues = [(:Train_Loss, round(current_training_loss, digits=6)),
-                                                      (:Val_Loss, round(current_validation_loss, digits=6))])
-
-        # Store the losses for future reference
-        push!(losses_training, current_training_loss)
-        push!(losses_validation, current_validation_loss)
-
-        # Save the best model if validation loss improves
-        if current_validation_loss < best_validation_loss
-            best_validation_loss = current_validation_loss
-            best_epoch = epoch
-            best_model = Flux.state(model_max_stress)
-        end
-    end
-
-    finish!(p)  # Finalize the progress bar
-
-    # Load the best model
-    Flux.loadmodel!(model_max_stress, best_model)
-
-    # Print summary of training results
-    println("\nTraining complete.")
-    println("Best validation loss at epoch $best_epoch with loss $best_validation_loss")
-
-    total_runtime = Dates.now() - start_time
-
-    return best_model, losses_training, losses_validation, best_epoch, best_validation_loss, total_runtime
-end
-
-best_model2, losses_training2, losses_validation2, best_epoch2, best_validation_loss2, total_runtime2 = train_max_stress_model(total_epochs_max_stress)
-best_training_loss2 = losses_training2[best_epoch2]
-
-save_plot_loss_log_max_stress = joinpath(results_dir_ANN_run, "loss_f_log_max_stress.png")
-# Plotting the loss
-p_loss_log_max_stress = plot([losses_training2, losses_validation2], label=["training loss for max stress" "validation loss for max stress"], yscale=:log10, xlabel="epochs", ylabel="MSE", size=(1200, 900))
-vline!(p_loss_log_max_stress, [best_epoch2], label="Best Epoch", linestyle=:dash, color=:red)
-savefig(save_plot_loss_log_max_stress)
-display(p_loss_log_max_stress)
-
-
-
 
 
 #######################################
