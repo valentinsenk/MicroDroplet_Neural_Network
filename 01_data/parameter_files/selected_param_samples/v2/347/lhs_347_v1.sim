@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- COPYRIGHT DASSAULT SYSTEMES 2009 -->
+<manifest>
+    <focusFile fileBinary="lhs_347_v1.simdir/lhs_347_v1.1.SMAFocus"/>
+    <publishIndex value="1"/>
+    <bulkFile bulkid="0" fileBinary="lhs_347_v1.2.SMABulk"/>
+    <bulkFile bulkid="1" fileBinary="lhs_347_v1.1.SMABulk"/>
+</manifest>
