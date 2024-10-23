@@ -15,6 +15,15 @@
 *.odb
 *.prt
 *.sta
+# Ignore if aborted due to time limit
+*.stt
+*.mdl
+*.simlog
+*.sim
+*.lck
+*.cid
+*.SMABulk
+*.simdir
 
 #Also exclude exception files and other abq waste
 
