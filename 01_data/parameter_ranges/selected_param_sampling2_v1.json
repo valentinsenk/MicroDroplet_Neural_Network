@@ -13,6 +13,6 @@
       "contact_angle": 25.7,
       "blade_distance": [0.1, 0.6],
       "elliptical_fiber_ratio": [1.0, 2.5],
-      "fiber_rotation" : 0
+      "fiber_rotation" : 45
     }
   }
