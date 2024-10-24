@@ -4,7 +4,7 @@ using DelimitedFiles
 
 # Define the root directory of samples
 root_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\01_data\\parameter_files"
-samples = "selected_param_samples\\v1"
+samples = "selected_param_samples\\v2"
 #samples = "geometrical_samples\\v6"
 #samples = "all_param_samples\\v1"
 root_dir = joinpath(root_dir, samples)

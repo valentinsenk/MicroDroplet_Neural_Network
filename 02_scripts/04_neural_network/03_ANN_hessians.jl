@@ -15,10 +15,10 @@ using CairoMakie
 using LinearAlgebra
 using Trapz
 
-sample_versions = ["mechanical_samples\\v4finer"]
+sample_versions = ["geometrical_samples\\v6"]
 
-total_epochs = 100000
-random_seed = 1234
+total_epochs = 20000
+random_seed = 4321
 Random.seed!(random_seed)
 description = "Maximum force"
 
@@ -134,7 +134,7 @@ batch_size = 4
 batches = Flux.DataLoader(data_training, batchsize=batch_size, shuffle=true) 
 
 learning_rate = 0.0001
-optim = Flux.setup(Flux.Adam(learning_rate), model)
+optim = Flux.setup(Flux.NAdam(learning_rate), model)
 
 
 function train_max_stress_model(total_epochs)

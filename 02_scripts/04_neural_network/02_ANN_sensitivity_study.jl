@@ -16,10 +16,10 @@ using LinearAlgebra
 using Trapz
 
 #sample_versions = ["geometrical_samples\\v4", "geometrical_samples\\v5"]
-sample_versions = ["mechanical_samples\\v4finer"]
-#sample_versions = ["selected_param_samples\\v1"]
+#sample_versions = ["mechanical_samples\\v4finer"]
+sample_versions = ["selected_param_samples\\v2"]
 
-total_epochs = 10000
+total_epochs = 5000
 random_seed = 1234
 Random.seed!(random_seed) #set random seed for reproducibility (hyperparameter changing)
 
@@ -124,9 +124,9 @@ N_out = length(Xs)
 # This is the actual model
 model = Chain(
     Dense(N_inp => 4*N_inp, celu),
-    Dropout(0.2), # to reduce overfit
-    Dense(4*N_inp => 4*N_inp, celu),
-    Dropout(0.2),
+    #Dropout(0.2), # to reduce overfit
+    #Dense(4*N_inp => 4*N_inp, celu),
+    #Dropout(0.2),
     Dense(4*N_inp => N_out)
 ) |> f64
 
