@@ -125,16 +125,16 @@ N_out_max = 1  # Since max stress is a scalar
 
 model = Chain(
     Dense(N_inp => 4*N_inp, celu),
-    #Dense(4*N_inp => 4*N_inp, celu),
+    Dense(4*N_inp => 4*N_inp, celu),
     Dense(4*N_inp => N_out_max)
 ) |> f64
 
 # This is the batch loader with the minibatch size
-batch_size = 4
+batch_size = 8
 batches = Flux.DataLoader(data_training, batchsize=batch_size, shuffle=true) 
 
 learning_rate = 0.0001
-optim = Flux.setup(Flux.NAdam(learning_rate), model)
+optim = Flux.setup(Flux.RAdam(learning_rate), model)
 
 
 function train_max_stress_model(total_epochs)
@@ -204,7 +204,7 @@ println("Trained model saved to $model_file")
 
 # Plot losses
 save_plot_loss_log_max_stress = joinpath(results_dir_ANN_run, "loss_f_log_max_stress.png")
-fig = Figure(resolution = (1200, 900))
+fig = Figure(size = (1200, 900))
 ax = Axis(fig[1, 1], xlabel = "epochs", ylabel = "MSE", yscale = log10)
 lines!(ax, 1:length(losses_training), losses_training, label = "training loss for max stress", color=:blue)
 lines!(ax, 1:length(losses_validation), losses_validation, label = "validation loss for max stress", color=:green)
@@ -353,6 +353,11 @@ save(save_sebi_plot, f_NN)
 ##### LOG FILE for ANN parameters #####
 #######################################
 
+# Extract optimizer info
+optimizer_name = split(typeof(optim.layers[1].weight).parameters[1] |> string, ".")[end]
+optimizer_info = optim.layers[1].weight
+optimizer_details = match(r"Leaf\((.*)\),", string(optimizer_info)).match
+
 function format_runtime(runtime::Dates.Period)
     # Convert the period to total seconds
     total_seconds = Dates.value(runtime) / 1000  # Since Dates.value returns milliseconds
@@ -382,7 +387,8 @@ end
 params_to_log = Dict(
     :Date_and_Time => Dates.now(),
     :Model_Architecture => string(model),
-    :Optimizer => "Adam($learning_rate)",
+    :Optimizer => optimizer_name * "($learning_rate)",
+    :Optimizer_FULL_Details => optimizer_details,
     :Batch_Size => batch_size,
     :Total_Epochs => total_epochs,
     :Best_Epoch => best_epoch,

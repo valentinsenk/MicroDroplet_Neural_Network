@@ -313,6 +313,9 @@ display(p_gradient)
 ##### LOG FILE for ANN parameters #####
 #######################################
 
+# Extract the optimizer's type dynamically
+optimizer_name = typeof(optim.optimiser)
+
 function format_runtime(runtime::Dates.Period)
     # Convert the period to total seconds
     total_seconds = Dates.value(runtime) / 1000  # Since Dates.value returns milliseconds
@@ -342,7 +345,7 @@ end
 params_to_log = Dict(
     :Date_and_Time => Dates.now(),
     :Model_Architecture => string(model),
-    :Optimizer => "Adam($learning_rate)",
+    :Optimizer => optimizer_name * "($learning_rate)",
     :Batch_Size => batch_size,
     :Total_Epochs => total_epochs,
     :Best_Epoch => best_epoch,
