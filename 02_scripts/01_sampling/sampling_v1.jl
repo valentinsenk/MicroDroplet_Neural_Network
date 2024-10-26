@@ -8,7 +8,7 @@ json_file = "selected_param_sampling2_v1.json"
 
 # Sample output
 num_samples = 300
-output_dir = "01_data/parameter_files/selected_param_samples2/v1/"
+output_dir = "01_data/parameter_files/selected_param_samples2/v2/"
 
 json_file = joinpath(json_dir, json_file)
 

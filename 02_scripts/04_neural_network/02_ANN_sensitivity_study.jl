@@ -17,7 +17,7 @@ using Trapz
 
 #sample_versions = ["geometrical_samples\\v4", "geometrical_samples\\v5"]
 #sample_versions = ["mechanical_samples\\v4finer"]
-sample_versions = ["selected_param_samples\\v2"]
+sample_versions = ["selected_param_samples2\\v1"]
 
 total_epochs = 5000
 random_seed = 1234
@@ -27,8 +27,8 @@ Random.seed!(random_seed) #set random seed for reproducibility (hyperparameter c
 # Define parameter names based on the sample type (for PLOTS)
 mech_params_names = ["GI", "GII", "t", "i_fric", "b_fric"]
 geom_params_names = ["fd", "D", "L/D", "θ", "ell/r", "φ", "bl_d"] # θ is contact angle; φ is fiber rotation
-selected_params01_names = ["GII", "t", "fd", "D", "bl_d"]
-selected_params02_names = [ ]
+#selected_params01_names = ["GII", "t", "fd", "D", "bl_d"]
+selected_params02_names = ["GII", "t", "fd", "ell/r", "bl_d"]
 
 ### ------ Filestructure and Dir creation ------ ###
 root_results_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\03_results" #results folder
@@ -101,7 +101,7 @@ normalized_params = map(clean_params_combined) do p
 end
 
 # Select training and test data
-N_training = Int(ceil(length(Ys_combined)/3*2))
+N_training = Int(ceil(length(Ys_combined)*4/5))
 
 # Randomize IDs for trying different sets
 training_ids = Set(shuffle(1:length(Ys_combined))[1:N_training])
@@ -207,8 +207,8 @@ if occursin("mechanical_samples", common_prefix)
     param_names = mech_params_names
 elseif occursin("geometrical_samples", common_prefix)
     param_names = geom_params_names
-elseif occursin("selected_param_samples", common_prefix)
-    param_names = selected_params01_names
+elseif occursin("selected_param_samples2", common_prefix)
+    param_names = selected_params02_names
 else
     param_names = vcat(mech_params_names, geom_params_names)
 end
@@ -313,8 +313,14 @@ display(p_gradient)
 ##### LOG FILE for ANN parameters #####
 #######################################
 
-# Extract the optimizer's type dynamically
-optimizer_name = typeof(optim.optimiser)
+# Extract optimizer info
+optimizer_name = split(typeof(optim.layers[1].weight).parameters[1] |> string, ".")[end]
+optimizer_info = string(optim.layers[1].weight)
+optimizer_details = optimizer_details = match(r"Leaf\([^)]*\)", optimizer_info).match
+
+# Calculate the number of training and test samples
+training_count = length(training_ids)
+test_count = length(test_ids)
 
 function format_runtime(runtime::Dates.Period)
     # Convert the period to total seconds
@@ -341,21 +347,24 @@ function log_parameters(filepath::String; kwargs...)
     println("Parameters logged to $filepath")
 end
 
+using OrderedCollections
 # Collect parameters to log with Symbol keys
-params_to_log = Dict(
+params_to_log = OrderedDict(
     :Date_and_Time => Dates.now(),
+    :Total_Runtime => total_runtime,
+    :Random_Seed_Number => random_seed,
     :Model_Architecture => string(model),
     :Optimizer => optimizer_name * "($learning_rate)",
+    :Optimizer_FULL_Details => optimizer_details,
     :Batch_Size => batch_size,
     :Total_Epochs => total_epochs,
     :Best_Epoch => best_epoch,
     :Best_Training_Loss => best_training_loss,
     :Best_Validation_Loss => best_validation_loss,
+    #:Huber_Loss_delta_param => delta_loss,
     :orig_Training_IDs => sort(original_ids_training),
     :orig_Test_IDs => sort(original_ids_test),
-    :Parameter_Ranges => parameter_ranges,
-    :Total_Runtime => total_runtime,
-    :Random_Seed_Number => random_seed
+    :Sample_Ratio_Train_to_Val => "$training_count/$test_count"   
 )
 
 log_file_path = joinpath(results_dir_ANN_run, "parameters_log.txt")

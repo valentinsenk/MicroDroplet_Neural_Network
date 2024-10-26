@@ -4,7 +4,7 @@ using DelimitedFiles
 
 # Define the root directory of samples
 root_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\01_data\\parameter_files"
-samples = "selected_param_samples\\v2"
+samples = "selected_param_samples2\\v1"
 #samples = "geometrical_samples\\v6"
 #samples = "all_param_samples\\v1"
 root_dir = joinpath(root_dir, samples)
@@ -13,7 +13,7 @@ root_dir = joinpath(root_dir, samples)
 #manual_exceptions = [57, 75, 90, 93, 99, 188, 227]#for geom v5 #[81] for geom v4 #[55] for "geom v3"
 #manual_exceptions = [123] #for mech v4
 #manual_exceptions = [105, 123, 270, 193] #for mech v4finer
-manual_exceptions = [ ] #for selected params
+manual_exceptions = [87, 133, 228, 241, 251, 254] #for selected params
 #### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
 
 # Define the root directory for storing results
@@ -43,7 +43,7 @@ function extract_parameters(param_data, samples)
     elseif occursin("geometrical", samples)
         return [param06, param07, param08, param09, param10, param11, param12]
     elseif occursin("selected", samples)
-        return [param02, param03, param06, param07, param12]
+        return [param02, param03, param06, param10, param12]
     else #
         return [param01, param02, param03, param04, param05, param06, param07, param08, param09, param10, param11, param12]
     end

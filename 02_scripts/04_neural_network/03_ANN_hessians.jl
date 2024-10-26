@@ -15,9 +15,11 @@ using CairoMakie
 using LinearAlgebra
 using Trapz
 
-sample_versions = ["geometrical_samples\\v6"]
+#sample_versions = ["geometrical_samples\\v6"]
+sample_versions = ["mechanical_samples\\v4finer"]
 
-total_epochs = 20000
+total_epochs = 100000
+delta_loss = 1 #0.001 #this value works great for geometrical_samples\\v6 (shifts basically to mean absolute error)
 random_seed = 4321
 Random.seed!(random_seed)
 description = "Maximum force"
@@ -94,7 +96,7 @@ normalized_params = map(clean_params_combined) do p
 end
 
 # Select training and test data
-N_training = Int(ceil(length(Ys_combined)/3*2))
+N_training = Int(ceil(length(Ys_combined)*4/5))
 
 # Randomize IDs for trying different sets
 training_ids = Set(shuffle(1:length(Ys_combined))[1:N_training])
@@ -130,11 +132,11 @@ model = Chain(
 ) |> f64
 
 # This is the batch loader with the minibatch size
-batch_size = 8
+batch_size = 4
 batches = Flux.DataLoader(data_training, batchsize=batch_size, shuffle=true) 
 
 learning_rate = 0.0001
-optim = Flux.setup(Flux.RAdam(learning_rate), model)
+optim = Flux.setup(Flux.Adam(learning_rate), model)
 
 
 function train_max_stress_model(total_epochs)
@@ -154,19 +156,19 @@ function train_max_stress_model(total_epochs)
         # Loop over minibatches
         for batch in batches
             val, grads = Flux.withgradient(model) do m
-                mean(Flux.Losses.mse(m(input), label) for (input, label) in batch)
+                mean(Flux.Losses.huber_loss(m(input), label; delta=delta_loss) for (input, label) in batch)
             end
             # Update the model using the gradients
             Flux.update!(optim, model, grads[1])
         end
 
         # Compute current training and validation losses
-        current_training_loss = mean(Flux.Losses.mse(model(x), y) for (x, y) in data_training)
-        current_validation_loss = mean(Flux.Losses.mse(model(x), y) for (x, y) in data_test)
+        current_training_loss = mean(Flux.Losses.huber_loss(model(x), y; delta=delta_loss) for (x, y) in data_training)
+        current_validation_loss = mean(Flux.Losses.huber_loss(model(x), y; delta=delta_loss) for (x, y) in data_test)
 
         # Update progress bar with current losses
-        ProgressMeter.update!(p, epoch; showvalues = [(:Train_Loss, round(current_training_loss, digits=6)),
-                                                      (:Val_Loss, round(current_validation_loss, digits=6))])
+        ProgressMeter.update!(p, epoch; showvalues = [(:Train_Loss, round(current_training_loss, digits=8)),
+                                                      (:Val_Loss, round(current_validation_loss, digits=8))])
 
         # Store the losses for future reference
         push!(losses_training, current_training_loss)
@@ -215,7 +217,7 @@ display(fig)
 
 
 # Compute the losses for each test sample
-test_losses = [Flux.Losses.mse(model(d[1]), d[2]) for d in data_test]
+test_losses = [Flux.Losses.huber_loss(model(d[1]), d[2]; delta=delta_loss) for d in data_test]
 n_min = sort(collect(1:length(test_losses)), by=i->test_losses[i])
 n_max = sort(collect(1:length(test_losses)), by=i->test_losses[i], rev=true) # best losses
 middle_start = Int(floor(length(test_losses) / 2)) - 3  # Start 3 positions before the middle
@@ -307,8 +309,10 @@ lines!(ax_NN, losses_validation, label="validation")
 Legend(g_conv[1,4], ax_NN)
 
 scatter!(ax_Worst, [d[2][1] for d in data_test], [model(d[1])[1] for d in data_test])
-l_ext = collect(extrema([d[2][1] for d in data_test]))
-lines!(ax_Worst, l_ext, l_ext, color=:black)
+#l_ext = collect(extrema([d[2][1] for d in data_test]))
+lines!(ax_Worst, [5,20], [5,20], color=:black)
+xlims!(ax_Worst, 5, 20)
+ylims!(ax_Worst, 5, 20)
 
 
 function taylor_polynomial(model, p0)
@@ -334,8 +338,10 @@ predo2 = [tpo2(ps|>collect) for ps in Iterators.product([range(0,1,length=5) for
 
 scatter!(ax_Taylor, base, predo1, label="o1", marker=:x, markersize=5.0)
 scatter!(ax_Taylor, base, predo2, label="o2", marker=:x, markersize=5.0)
-lines!(ax_Taylor, collect(extrema(base)), collect(extrema(base)), color=:black)
+lines!(ax_Taylor, [5,20], [5,20], color=:black)
 axislegend(ax_Taylor, position=:rb)
+xlims!(ax_Taylor, 5, 20)
+ylims!(ax_Taylor, 5, 20)
 
 barplot!(ax_gradient, g, direction=:x) 
 
@@ -355,8 +361,12 @@ save(save_sebi_plot, f_NN)
 
 # Extract optimizer info
 optimizer_name = split(typeof(optim.layers[1].weight).parameters[1] |> string, ".")[end]
-optimizer_info = optim.layers[1].weight
-optimizer_details = match(r"Leaf\((.*)\),", string(optimizer_info)).match
+optimizer_info = string(optim.layers[1].weight)
+optimizer_details = optimizer_details = match(r"Leaf\([^)]*\)", optimizer_info).match
+
+# Calculate the number of training and test samples
+training_count = length(training_ids)
+test_count = length(test_ids)
 
 function format_runtime(runtime::Dates.Period)
     # Convert the period to total seconds
@@ -383,9 +393,12 @@ function log_parameters(filepath::String; kwargs...)
     println("Parameters logged to $filepath")
 end
 
+using OrderedCollections
 # Collect parameters to log with Symbol keys
-params_to_log = Dict(
+params_to_log = OrderedDict(
     :Date_and_Time => Dates.now(),
+    :Total_Runtime => total_runtime,
+    :Random_Seed_Number => random_seed,
     :Model_Architecture => string(model),
     :Optimizer => optimizer_name * "($learning_rate)",
     :Optimizer_FULL_Details => optimizer_details,
@@ -394,10 +407,10 @@ params_to_log = Dict(
     :Best_Epoch => best_epoch,
     :Best_Training_Loss => best_training_loss,
     :Best_Validation_Loss => best_validation_loss,
+    :Huber_Loss_delta_param => delta_loss,
     :orig_Training_IDs => sort(original_ids_training),
     :orig_Test_IDs => sort(original_ids_test),
-    :Total_Runtime => total_runtime,
-    :Random_Seed_Number => random_seed
+    :Sample_Ratio_Train_to_Val => "$training_count/$test_count"   
 )
 
 log_file_path = joinpath(results_dir_ANN_run, "parameters_log.txt")
