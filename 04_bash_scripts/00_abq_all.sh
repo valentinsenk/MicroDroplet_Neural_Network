@@ -2,15 +2,15 @@
 #SBATCH --nodes=1  # Run all processes on a single node
 #SBATCH --nodelist=node04.imws.tuwien.ac.at #use the new node
 #SBATCH --ntasks=2  # Use 4 threads (=2 cpu core)
-#SBATCH --array=1-300%30 #submit job array with a maximum of 20 parallel jobs
+#SBATCH --array=1-150%32 #submit job array with a maximum of 20 parallel jobs
 #SBATCH --job-name=selected2_v1 # Job Name
 #SBATCH --time=1-00:00:00
-#SBATCH --output=/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/selected_param_samples2/v1/%03a/slurm-%A_%a--%x.log  # Standard output and error log
+#SBATCH --output=/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/selected_param_samples2/v2/%03a/slurm-%A_%a--%x.log  # Standard output and error log
 #SBATCH --licenses="abaqus_teaching@2501@l4.zserv.tuwien.ac.at":5   ##SBATCH --licenses="abaqus@2501@lic-srv1.it.tuwien.ac.at":5
 
 
 # Define the root directory where the parameter directories are located
-ROOT_DIR="/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/selected_param_samples2/v1"
+ROOT_DIR="/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/selected_param_samples2/v2"
 # Get the current parameter directory based on the job array index
 PARAM_DIR=$(printf "%03d" $SLURM_ARRAY_TASK_ID)
 # Navigate to the directory
