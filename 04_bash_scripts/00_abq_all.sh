@@ -1,12 +1,13 @@
 #!/bin/bash
 #SBATCH --nodes=1  # Run all processes on a single node
-#SBATCH --nodelist=node04.imws.tuwien.ac.at #use the new node
+##SBATCH --nodelist=node04.imws.tuwien.ac.at #use the new node
 #SBATCH --ntasks=2  # Use 4 threads (=2 cpu core)
-#SBATCH --array=1-150%32 #submit job array with a maximum of 20 parallel jobs
-#SBATCH --job-name=selected2_v1 # Job Name
+#SBATCH --array=291-300%10 #submit job array with a maximum of 20 parallel jobs
+#SBATCH --job-name=selected2_v2 # Job Name
 #SBATCH --time=1-00:00:00
 #SBATCH --output=/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/selected_param_samples2/v2/%03a/slurm-%A_%a--%x.log  # Standard output and error log
-#SBATCH --licenses="abaqus_teaching@2501@l4.zserv.tuwien.ac.at":5   ##SBATCH --licenses="abaqus@2501@lic-srv1.it.tuwien.ac.at":5
+##SBATCH --licenses="abaqus_teaching@2501@l4.zserv.tuwien.ac.at":5
+#SBATCH --licenses="abaqus@2501@lic-srv1.it.tuwien.ac.at":5
 
 
 # Define the root directory where the parameter directories are located
@@ -24,13 +25,13 @@ start_model=$(date +%s)
 
 
 # if abaqus_teaching license server is not yet in abaqus_v6.env then add it
-touch abaqus_v6.env
-if ! grep -q "abaquslm_license_file" abaqus_v6.env ; then
-	echo 'abaquslm_license_file="2501@l4.zserv.tuwien.ac.at"' >> abaqus_v6.env # can be 2501@lic-srv1.it.tuwien.ac.at (research) or 2501@l4.zserv.tuwien.ac.at (teaching)
-fi
-if ! grep -q "academic" abaqus_v6.env ; then
-	echo 'academic=TEACHING' >> abaqus_v6.env # can be RESEARCH or TEACHING
-fi
+#touch abaqus_v6.env
+#if ! grep -q "abaquslm_license_file" abaqus_v6.env ; then
+#	echo 'abaquslm_license_file="2501@l4.zserv.tuwien.ac.at"' >> abaqus_v6.env # can be 2501@lic-srv1.it.tuwien.ac.at (research) or 2501@l4.zserv.tuwien.ac.at (teaching)
+#fi
+#if ! grep -q "academic" abaqus_v6.env ; then
+#	echo 'academic=TEACHING' >> abaqus_v6.env # can be RESEARCH or TEACHING
+#fi
 
 # Run the Abaqus Python script to build the model
 /opt/abaqus/Commands/abq2024 cae noGUI=/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/02_scripts/02_preprocessing/01_build_model_v1.py
