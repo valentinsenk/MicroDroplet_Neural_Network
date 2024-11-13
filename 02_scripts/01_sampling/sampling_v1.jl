@@ -1,14 +1,25 @@
 using JSON
 using LatinHypercubeSampling
 using DelimitedFiles
+using Random
+
+random_seed = 1234
+Random.seed!(random_seed) #set random seed to reproduce
 
 # Load JSON file 
 json_dir = "01_data/parameter_ranges"
-json_file = "selected_param_sampling2_v1.json"
+json_file = "geometrical_sampling_v7-5.json"
 
 # Sample output
-num_samples = 300
-output_dir = "01_data/parameter_files/selected_param_samples2/v2/"
+num_samples = 100
+output_dir = "01_data/parameter_files/geometrical_samples/v7-5/"
+mkpath(output_dir) 
+
+# Log the seed number in a text file
+seed_file_path = joinpath(output_dir, "random_seed.txt")
+open(seed_file_path, "w") do io
+    write(io, "$random_seed")
+end
 
 json_file = joinpath(json_dir, json_file)
 

@@ -17,18 +17,19 @@ using Trapz
 
 #sample_versions = ["geometrical_samples\\v6"]
 sample_versions = ["mechanical_samples\\v4finer"]
+#sample_versions = ["selected_param_samples2\\v1", "selected_param_samples2\\v2"]
 
-total_epochs = 100000
-delta_loss = 1 #0.001 #this value works great for geometrical_samples\\v6 (shifts basically to mean absolute error)
-random_seed = 4321
+total_epochs = 10000
+delta_loss = 0.001 #0.001 #this value works great for geometrical_samples\\v6 (shifts basically to mean absolute error)
+random_seed = 1234
 Random.seed!(random_seed)
 description = "Maximum force"
 
 # Define parameter names based on the sample type (for PLOTS)
 mech_params_names = ["GI", "GII", "t", "i_fric", "b_fric"]
 geom_params_names = ["fd", "D", "L/D", "θ", "ell/r", "φ", "bl_d"] # θ is contact angle; φ is fiber rotation
-selected_params01_names = ["GII", "t", "fd", "D", "bl_d"]
-selected_params02_names = [ ]
+#selected_params01_names = ["GII", "t", "fd", "D", "bl_d"]
+selected_params02_names = ["GII", "t", "fd", "ell/r", "bl_d"]
 
 ### ------ Filestructure and Dir creation ------ ###
 root_results_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\03_results" #results folder
@@ -127,7 +128,7 @@ N_out_max = 1  # Since max stress is a scalar
 
 model = Chain(
     Dense(N_inp => 4*N_inp, celu),
-    Dense(4*N_inp => 4*N_inp, celu),
+    #Dense(4*N_inp => 4*N_inp, celu),
     Dense(4*N_inp => N_out_max)
 ) |> f64
 
@@ -267,7 +268,7 @@ if occursin("mechanical_samples", common_prefix)
 elseif occursin("geometrical_samples", common_prefix)
     param_names = geom_params_names
 elseif occursin("selected_param_samples", common_prefix)
-    param_names = selected_params01_names
+    param_names = selected_params02_names
 else
     param_names = vcat(mech_params_names, geom_params_names)
 end
@@ -329,7 +330,7 @@ function taylor_polynomial(model, p0)
 end
 
 # Location to develop taylor series around
-p0 = [0.5 for _ in 1:N_inp]
+p0 = [1.0 for _ in 1:N_inp]
 tpo1, tpo2, g, H = taylor_polynomial(model, p0)
 
 base = [model(ps |> collect)[1] for ps in Iterators.product([range(0,1,length=5) for _ in 1:N_inp]...)][:];
@@ -343,7 +344,8 @@ axislegend(ax_Taylor, position=:rb)
 xlims!(ax_Taylor, 5, 20)
 ylims!(ax_Taylor, 5, 20)
 
-barplot!(ax_gradient, g, direction=:x) 
+barplot!(ax_gradient, g, direction=:x)
+xlims!(ax_gradient, 0, 15)
 
 H_ext = maximum(abs.(H))
 H_ext = H_ext ≈ 0.0 ? 1.0 : H_ext
@@ -352,7 +354,7 @@ Colorbar(f_NN[3:4, 4], hm)
 
 display(f_NN)
 
-save_sebi_plot = joinpath(results_dir_ANN_run, "Sebis_plot.png")
+save_sebi_plot = joinpath(results_dir_ANN_run, "Grad100.png")
 save(save_sebi_plot, f_NN)
 
 #######################################

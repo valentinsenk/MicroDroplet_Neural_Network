@@ -181,10 +181,10 @@ def bead_profile(h, r, L, o):
     # Calculate parameters
     a = (h * np.cos(np.radians(o)) - r) / (h - r * np.cos(np.radians(o)))
     k = np.sqrt((h**2 - (a * r)**2) / h**2)
-    theta_max = np.arcsin(1 / k * np.sqrt(1 - (r**2 / h**2)))
+    phi_max = np.arcsin(1 / k * np.sqrt(1 - (r**2 / h**2)))
     
     # Profile calculation
-    phi = np.linspace(0, theta_max, 50)
+    phi = np.linspace(0, phi_max, 50)
     x = h * np.sqrt(1 - k**2 * np.sin(phi)**2)
     y = a * r * ellipkinc(phi, k**2) + h * ellipeinc(phi, k**2)
 

@@ -15,11 +15,12 @@ using FileIO
 using LinearAlgebra
 using Trapz
 
-#sample_versions = ["geometrical_samples\\v4", "geometrical_samples\\v5"]
-#sample_versions = ["mechanical_samples\\v4finer"]
-sample_versions = ["selected_param_samples2\\v1"]
+#sample_versions = ["geometrical_samples\\v6"]
+sample_versions = ["mechanical_samples\\v4finer"]
+#sample_versions = ["selected_param_samples2\\v1", "selected_param_samples2\\v2"]
 
-total_epochs = 5000
+total_epochs = 100000
+learning_rate = 0.001
 random_seed = 1234
 Random.seed!(random_seed) #set random seed for reproducibility (hyperparameter changing)
 
@@ -124,14 +125,13 @@ N_out = length(Xs)
 # This is the actual model
 model = Chain(
     Dense(N_inp => 4*N_inp, celu),
-    #Dropout(0.2), # to reduce overfit
-    #Dense(4*N_inp => 4*N_inp, celu),
-    #Dropout(0.2),
+    Dropout(0.2), # to reduce overfit
+    Dense(4*N_inp => 4*N_inp, celu),
+    Dropout(0.2),
     Dense(4*N_inp => N_out)
 ) |> f64
 
 # This is the optimizer
-learning_rate = 0.001
 optim = Flux.setup(Flux.Adam(learning_rate), model)
 
 # This is the batch loader with the minibatch size
@@ -154,14 +154,14 @@ function train_model(total_epochs)
         # Loop over minibatches
         for batch in batches
             val, grads = Flux.withgradient(model) do m
-                mean(Flux.Losses.mse(m(input), label) for (input, label) in batch)
+                mean(Flux.Losses.mae(m(input), label) for (input, label) in batch)
             end
             Flux.update!(optim, model, grads[1])
         end
 
         # Compute current training and validation losses
-        current_training_loss = mean(Flux.Losses.mse(model(x), y) for (x, y) in data_training)
-        current_validation_loss = mean(Flux.Losses.mse(model(x), y) for (x, y) in data_test)
+        current_training_loss = mean(Flux.Losses.mae(model(x), y) for (x, y) in data_training)
+        current_validation_loss = mean(Flux.Losses.mae(model(x), y) for (x, y) in data_test)
 
         # Update progress bar with current values
         ProgressMeter.update!(p, epoch; showvalues = [(:Train_Loss, round(current_training_loss, digits=6)),
@@ -217,11 +217,14 @@ parameter_ranges = extrema.(eachrow(reduce(hcat, clean_params_combined)))
 range_text = "Parameter ranges:\n " * join([ "$(param_names[i]): (" * string(round(l, digits=4)) * "-" * string(round(u, digits=4)) * ")" 
                                            for (i, (l, u)) in enumerate(parameter_ranges)], ", ")
 
-function generate_param_string(sample_idx)
-    params = clean_params_combined_test[sample_idx]
-    param_str = join([ string(param_names[i]) * ": " * string(round(p, digits=4)) for (i, p) in enumerate(params)], ", ")
+function generate_param_string(sample_idx, dataset_type::Symbol)
+    # Choose the dataset based on `dataset_type`
+    params = dataset_type == :test ? clean_params_combined_test[sample_idx] : clean_params_combined_training[sample_idx]
+    
+    # Generate the parameter string
+    param_str = join([string(param_names[i]) * ": " * string(round(p, digits=4)) for (i, p) in enumerate(params)], ", ")
     return param_str
-end     
+end    
 #######                                      
 
 save_plot_loss_log = joinpath(results_dir_ANN_run, "loss_f_log.png")
@@ -237,12 +240,12 @@ savefig(save_plot_loss_log)
 display(p_loss_log)
 
 # Plotting the N worst approximations
-test_losses = [Flux.Losses.mse(model(d[1]),d[2]) for d in data_test]
+test_losses = [Flux.Losses.mae(model(d[1]),d[2]) for d in data_test]
 n_max = sort(collect(1:length(test_losses)), by=i->test_losses[i], rev=true)
 p_worst = plot(layout=grid(2,3), plot_title=range_text, plot_titlefontsize=6,
     [plot(Xs, [model(data_test[idx][1]), data_test[idx][2]], 
     labels=["prediction" "truth"], 
-    title="WORST SAMPLE [original ID: $(original_ids_test[idx])]\n$(generate_param_string(idx))", size=(1200, 900),
+    title="WORST SAMPLE [original ID: $(original_ids_test[idx])]\n$(generate_param_string(idx, :test))", size=(1200, 900),
         titlefont=5, ylims=(0, 20)) for idx in n_max[1:6]]...)
 savefig(p_worst, save_plot_worst)
 display(p_worst)
@@ -252,7 +255,7 @@ n_min = sort(collect(1:length(test_losses)), by=i->test_losses[i])  # Sort in as
 p_best = plot(layout=grid(2, 3), plot_title=range_text, plot_titlefontsize=6,
     [plot(Xs, [model(data_test[idx][1]), data_test[idx][2]], 
     labels=["prediction" "truth"], 
-    title="BEST SAMPLE [original ID: $(original_ids_test[idx])]\n$(generate_param_string(idx))", size=(1200, 900),
+    title="BEST SAMPLE [original ID: $(original_ids_test[idx])]\n$(generate_param_string(idx, :test))", size=(1200, 900),
         titlefont=5, ylims=(0, 20)) for idx in n_min[1:6]]...)
 savefig(save_plot_best)
 display(p_best)
@@ -264,7 +267,7 @@ n_middle = n_max[middle_start:middle_end]
 p_median = plot(layout=grid(2, 3), plot_title=range_text, plot_titlefontsize=6,
     [plot(Xs, [model(data_test[idx][1]), data_test[idx][2]], 
     labels=["prediction" "truth"], 
-    title="MEDIAN SAMPLE [original ID: $(original_ids_test[idx])]\n$(generate_param_string(idx))", size=(1200, 900),
+    title="MEDIAN SAMPLE [original ID: $(original_ids_test[idx])]\n$(generate_param_string(idx, :test))", size=(1200, 900),
         titlefont=5, ylims=(0, 20)) for idx in n_middle]...)
 savefig(save_plot_median)
 display(p_median)
@@ -307,6 +310,53 @@ plot!(plt1, Xs, _base_mean, color=colors_red[2], label=:none)
 p_gradient = plot(layout=grid(2,1), plt1, plt2, size=(1200, 900))
 savefig(save_gradient)
 display(p_gradient)
+
+
+#### NEW: PLOT ALL VALIDATION SAMPLES TO COMPARE
+
+# Determine number of rows and columns for layout
+n_cols = 4  # or any manageable number
+n_rows = ceil(Int, length(n_max) / n_cols)
+
+# Create subplot layout for all samples
+
+p_all_samples = plot(layout=grid(n_rows,n_cols), plot_title=range_text, plot_titlefontsize=6,
+    [plot(Xs, [model(data_test[idx][1]), data_test[idx][2]], 
+    labels=["test predict" "fea truth"], 
+    title="SAMPLE [original ID: $(original_ids_test[idx])]\n$(generate_param_string(idx, :test))", size=(n_cols*400, n_rows*400),
+        titlefont=5, ylims=(0, 20)) for idx in n_max]...)
+
+# Save and display
+savefig(joinpath(results_dir_ANN_run, "all_validation.png"))
+display(p_all_samples)
+
+#################################
+
+#### NEW: PLOT ALL TRAINING SAMPLES TO COMPARE
+
+# Compute losses for each training sample
+train_losses = [Flux.Losses.mae(model(data[1]), data[2]) for data in data_training]
+
+# Sort indices based on training losses (ascending for best samples)
+sorted_train_indices = sort(collect(1:length(train_losses)), by=i->train_losses[i], rev=true) #starting from worst
+
+# Determine number of rows and columns for layout for sorted training samples
+n_cols = 4
+n_rows = ceil(Int, length(sorted_train_indices) / n_cols)
+
+# Create subplot layout for sorted training samples
+p_all_training_samples = plot(layout=grid(n_rows, n_cols), plot_title=range_text, plot_titlefontsize=6,
+    [plot(Xs, [model(data_training[idx][1]), data_training[idx][2]], 
+    labels=["training predict" "fea truth"], 
+    title="SAMPLE [original ID: $(original_ids_training[idx])]\n$(generate_param_string(idx, :training))", 
+    size=(n_cols*400, n_rows*400), titlefont=5, ylims=(0, 20)) for idx in sorted_train_indices]...)
+
+# Save and display
+savefig(joinpath(results_dir_ANN_run, "all_training.png"))
+display(p_all_training_samples)
+
+
+
 
 
 #######################################

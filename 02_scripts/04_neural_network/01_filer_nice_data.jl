@@ -4,8 +4,8 @@ using DelimitedFiles
 
 # Define the root directory of samples
 root_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\01_data\\parameter_files"
-samples = "selected_param_samples2\\v1"
-#samples = "geometrical_samples\\v6"
+#samples = "selected_param_samples2\\v2"
+samples = "geometrical_samples\\v6"
 #samples = "all_param_samples\\v1"
 root_dir = joinpath(root_dir, samples)
 
@@ -13,8 +13,12 @@ root_dir = joinpath(root_dir, samples)
 #manual_exceptions = [57, 75, 90, 93, 99, 188, 227]#for geom v5 #[81] for geom v4 #[55] for "geom v3"
 #manual_exceptions = [123] #for mech v4
 #manual_exceptions = [105, 123, 270, 193] #for mech v4finer
-manual_exceptions = [87, 133, 228, 241, 251, 254] #for selected params
+#anual_exceptions = [11, 15, 30, 40, 55, 85, 87, 88, 93, 113, 121, 132, 133, 135, 139, 144, 145, 197, 202, 204, 228, 241, 251, 254] #for selected params2 v1
+#manual_exceptions = [10, 25, 39, 49, 57, 61, 63, 80, 93, 107, 122, 138, 171, 200, 203, 230, 239, 250, 261, 286, 291] #for selected params2 v2
+manual_exceptions = [22, 64, 77, 119, 240] #for geom_v6
 #### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
+
+l_resample_Xs = 150 #new resampled Xs length
 
 # Define the root directory for storing results
 root_results_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\03_results"
@@ -538,6 +542,44 @@ display(p_clean_cut)
 println("Clean samples saved to: $plot_file_clean_cut")
 
 
+##################################
+### Save some statistical data ### BEFORE RESAMPLING
+##################################
+
+using Statistics
+
+# Calculate maximum stresses for original FEA samples
+original_max_values = [maximum(Y) for (X, Y) in clean_XY_data]
+
+# Calculate summary statistics for the original FEA samples
+original_min_value = minimum(original_max_values)
+original_max_value = maximum(original_max_values)
+original_mean_value = mean(original_max_values)
+original_std_dev = std(original_max_values)
+original_quantiles = quantile(original_max_values, [0.05, 0.25, 0.75, 0.95])
+
+# Define the path for the output text file for original FEA samples
+original_output_file = joinpath(results_dir, "maximum_stress_original.txt")
+
+# Write statistics to the text file
+open(original_output_file, "w") do file
+    write(file, "Maximum Stress Summary Statistics for Original FEA Samples\n")
+    write(file, "---------------------------------------------------------\n")
+    write(file, "Total number of clean samples: $(length(clean_XY_data))\n\n")
+    write(file, "Minimum value: $original_min_value\n")
+    write(file, "Maximum value: $original_max_value\n")
+    write(file, "Mean value: $original_mean_value\n")
+    write(file, "Standard deviation: $original_std_dev\n\n")
+    write(file, "Quantiles:\n")
+    write(file, "  5% Quantile: $(original_quantiles[1])\n")
+    write(file, "  25% Quantile: $(original_quantiles[2])\n")
+    write(file, "  75% Quantile: $(original_quantiles[3])\n")
+    write(file, "  95% Quantile: $(original_quantiles[4])\n")
+end
+
+println("Maximum stress statistics for original FEA samples saved to: $original_output_file")
+
+
 ### Resample data even more for input for Sebis ANN SCRIPT
 using Interpolations
 using SavitzkyGolay #to smooth out the linestyle
@@ -546,7 +588,7 @@ window_size = 3  # Must be odd
 polynomial_order = 1  # Must be less than window_size
 
 # Resample using linear interpolation
-Xs = range(0, x_max, length=200)
+Xs = range(0, x_max, length=l_resample_Xs)
 Ys = map(clean_XY_data) do d
     f = linear_interpolation(d.X, d.Y)
     Y_interp = f.(Xs)
@@ -577,6 +619,43 @@ display(p_clean_cut_resample)
 plot_file_clean_cut_re = joinpath(results_dir, "08_Final_input_ANN.png")
 savefig(p_clean_cut_resample, plot_file_clean_cut_re)
 
+##################################
+### Save some statistical data ###
+##################################
+
+# Calculate the maximum values for each Y dataset
+max_values = [maximum(Y) for Y in Ys]
+
+# Calculate summary statistics
+min_value = minimum(max_values)
+max_value = maximum(max_values)
+mean_value = mean(max_values)
+std_dev = std(max_values)
+quantiles = quantile(max_values, [0.05, 0.25, 0.75, 0.95])
+
+# Define the path for the output text file
+output_file = joinpath(results_dir, "maximum_stress_of_filtered_data.txt")
+
+# Get the total number of clean samples
+total_clean_samples = length(clean_XY_data)
+
+# Write statistics to the text file
+open(output_file, "w") do file
+    write(file, "Maximum Stress Summary Statistics\n")
+    write(file, "--------------------------------\n")
+    write(file, "Total number of clean samples: $total_clean_samples\n\n")
+    write(file, "Minimum value: $min_value\n")
+    write(file, "Maximum value: $max_value\n")
+    write(file, "Mean value: $mean_value\n")
+    write(file, "Standard deviation: $std_dev\n\n")
+    write(file, "Quantiles:\n")
+    write(file, "  5% Quantile: $(quantiles[1])\n")
+    write(file, "  25% Quantile: $(quantiles[2])\n")
+    write(file, "  75% Quantile: $(quantiles[3])\n")
+    write(file, "  95% Quantile: $(quantiles[4])\n")
+end
+
+println("Maximum stress statistics saved to: $output_file")
 
 #############################
 ### SAVE CLEAN PARAMETERS ###

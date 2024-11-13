@@ -1,0 +1,15 @@
+Model and Training Parameters:
+Date_and_Time: 2024-10-27T23:33:10.993
+Total_Runtime: 0h 2m 7.09s
+Random_Seed_Number: 4321
+Model_Architecture: Chain(Dense(5 => 20, celu), Dense(20 => 200))
+Optimizer: Adam(0.001)
+Optimizer_FULL_Details: Leaf(Adam(0.001, (0.9, 0.999)
+Batch_Size: 4
+Total_Epochs: 5000
+Best_Epoch: 4988
+Best_Training_Loss: 0.2434920554220241
+Best_Validation_Loss: 0.5001628481498487
+orig_Training_IDs: [2, 6, 10, 11, 13, 17, 20, 21, 26, 32, 33, 34, 39, 40, 44, 46, 55, 56, 60, 62, 63, 65, 66, 71, 73, 74, 75, 76, 79, 80, 84, 86, 87, 88, 92, 98, 102, 107, 110, 112, 115, 116, 118, 119, 122, 130, 131, 135, 136, 137, 138, 140, 146, 147]
+orig_Test_IDs: [25, 29, 42, 49, 57, 61, 77, 83, 93, 96, 109, 120, 150]
+Sample_Ratio_Train_to_Val: 54/13
