@@ -5,7 +5,7 @@ using DelimitedFiles
 # Define the root directory of samples
 root_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\01_data\\parameter_files"
 #samples = "selected_param_samples2\\v2"
-samples = "geometrical_samples\\v6"
+samples = "geometrical_samples\\v7-5"
 #samples = "all_param_samples\\v1"
 root_dir = joinpath(root_dir, samples)
 
@@ -15,7 +15,8 @@ root_dir = joinpath(root_dir, samples)
 #manual_exceptions = [105, 123, 270, 193] #for mech v4finer
 #anual_exceptions = [11, 15, 30, 40, 55, 85, 87, 88, 93, 113, 121, 132, 133, 135, 139, 144, 145, 197, 202, 204, 228, 241, 251, 254] #for selected params2 v1
 #manual_exceptions = [10, 25, 39, 49, 57, 61, 63, 80, 93, 107, 122, 138, 171, 200, 203, 230, 239, 250, 261, 286, 291] #for selected params2 v2
-manual_exceptions = [22, 64, 77, 119, 240] #for geom_v6
+#manual_exceptions = [22, 64, 77, 119, 240] #for geom_v6
+manual_exceptions = [] #for geom_v7-1
 #### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
 
 l_resample_Xs = 150 #new resampled Xs length
@@ -29,23 +30,24 @@ function extract_parameters(param_data, samples)
     # Mechanical parameters
     param01 = param_data["mechanical_parameters"]["GI"]
     param02 = param_data["mechanical_parameters"]["GII,GIII"]
-    param03 = param_data["mechanical_parameters"]["tI=tII=tIII"]
-    param04 = param_data["mechanical_parameters"]["interface_friction"]
-    param05 = param_data["mechanical_parameters"]["blade_friction"]
+    param03 = param_data["mechanical_parameters"]["tI"]
+    param04 = param_data["mechanical_parameters"]["tII,tIII"]
+    param05 = param_data["mechanical_parameters"]["interface_friction"]
+    param06 = param_data["mechanical_parameters"]["blade_friction"]
     # Geometrical parameters
-    param06 = param_data["geometrical_parameters"]["fiber_diameter"]
-    param07 = param_data["geometrical_parameters"]["droplet_diameter"]
-    param08 = param_data["geometrical_parameters"]["ratio_droplet_embedded_length"]
-    param09 = param_data["geometrical_parameters"]["contact_angle"]
-    param10 = param_data["geometrical_parameters"]["elliptical_fiber_ratio"]
-    param11 = param_data["geometrical_parameters"]["fiber_rotation"]
-    param12 = param_data["geometrical_parameters"]["blade_distance"]
+    param07 = param_data["geometrical_parameters"]["fiber_diameter"]
+    param08 = param_data["geometrical_parameters"]["droplet_diameter"]
+    param09 = param_data["geometrical_parameters"]["ratio_droplet_embedded_length"]
+    param10 = param_data["geometrical_parameters"]["contact_angle"]
+    param11 = param_data["geometrical_parameters"]["elliptical_fiber_ratio"]
+    param12 = param_data["geometrical_parameters"]["fiber_rotation"]
+    param13 = param_data["geometrical_parameters"]["blade_distance"]
 
     # Return parameters based on the sample type
     if occursin("mechanical", samples)
-        return [param01, param02, param03, param04, param05]
+        return [param01, param02, param03, param04, param05, param06]
     elseif occursin("geometrical", samples)
-        return [param06, param07, param08, param09, param10, param11, param12]
+        return [param07, param08, param09, param10, param11, param12, param13]
     elseif occursin("selected", samples)
         return [param02, param03, param06, param10, param12]
     else #

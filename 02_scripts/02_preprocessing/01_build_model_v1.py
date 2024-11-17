@@ -113,9 +113,10 @@ l_free = round(2*r, 4) #3000 # free fiber length in mm
 l_end = round(L, 4) # length of fiber from loose end to the end of the droplet
 
 ### Some mechanical parameters for fiber-droplet system ###
-G_modeI = round(params['mechanical_parameters']['GI'], 4) #interface normal energy
 G_modeII = round(params['mechanical_parameters']['GII,GIII'], 4) #interface shear energy
-tI = round(params['mechanical_parameters']['tI=tII=tIII']*9.74, 4) #interface strength
+G_modeI = round(params['mechanical_parameters']['GI']*G_modeII, 4) #interface normal energy (dependant)
+tII = round(params['mechanical_parameters']['tII,tIII']*9.8, 4) #interface shear strength
+tI = round(params['mechanical_parameters']['tI']*tII, 4) #interface normal strength (dependant)
 interface_fric = round(params['mechanical_parameters']['interface_friction'], 2)#friction const. between fiber and droplet
 blade_fric = round(params['mechanical_parameters']['blade_friction'], 2)#friction between blade and droplet
 
@@ -142,7 +143,8 @@ logging.info(f"b = {b} mm #actual blade distance (from middle axis)")
 logging.info(f"-----------------------------------------")
 logging.info(f"GI = {G_modeI} N/mm #")
 logging.info(f"GII = {G_modeII} N/mm #")
-logging.info(f"tI = tII = tIII = {tI} N/mm² #")
+logging.info(f"tI = {tI} N/mm² #")
+logging.info(f"tII = {tII} N/mm² #")
 logging.info(f"interface_fric = {interface_fric} #coulomb friction parameter")
 logging.info(f"blade_fric = {blade_fric} #coulomb friction parameter")
 logging.info(f"-----------------------------------------")
@@ -1261,7 +1263,7 @@ mdb.models['Model-1'].interactionProperties['COHESIVE'].CohesiveBehavior(
 mdb.models['Model-1'].interactionProperties['COHESIVE'].NormalBehavior(
     pressureOverclosure=HARD, allowSeparation=ON, 
     constraintEnforcementMethod=DEFAULT)
-mdb.models['Model-1'].interactionProperties['COHESIVE'].Damage(initTable=((tI, tI, tI), ),
+mdb.models['Model-1'].interactionProperties['COHESIVE'].Damage(initTable=((tI, tII, tII), ),
     useEvolution=ON, evolutionType=ENERGY, useMixedMode=ON, mixedModeType=POWER_LAW, 
     exponent=1.0, evolTable=((G_modeI, G_modeII, G_modeII), ), useStabilization=ON, viscosityCoef=1e-05)
 #: The interaction property "COHESIVE" has been created.

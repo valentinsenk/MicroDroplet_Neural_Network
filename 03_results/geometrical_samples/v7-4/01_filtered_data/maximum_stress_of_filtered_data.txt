@@ -1,0 +1,14 @@
+Maximum Stress Summary Statistics
+--------------------------------
+Total number of clean samples: 95
+
+Minimum value: 7.857722768760173
+Maximum value: 11.484644728715047
+Mean value: 10.0430773913081
+Standard deviation: 0.9022741913287743
+
+Quantiles:
+  5% Quantile: 8.495109564297124
+  25% Quantile: 9.473492400997268
+  75% Quantile: 10.755192633428397
+  95% Quantile: 11.306426744147513
