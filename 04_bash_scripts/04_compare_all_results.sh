@@ -10,7 +10,7 @@
 ####### variables #######
 comparisonfile='compare_results_BASH_v1'
 matlab_script_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/02_scripts/03_postprocessing/'
-root_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/geometrical_samples/v7-5'
+root_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/geometrical_samples/v8-3'
 ##########################
 
 # Print running host
