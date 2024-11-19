@@ -8,11 +8,11 @@ Random.seed!(random_seed) #set random seed to reproduce
 
 # Load JSON file 
 json_dir = "01_data/parameter_ranges"
-json_file = "geometrical_sampling_v8-4.json"
+json_file = "geometrical_sampling_v9.json"
 
 # Sample output
-num_samples = 100
-output_dir = "01_data/parameter_files/geometrical_samples/v8-4/"
+num_samples = 500
+output_dir = "01_data/parameter_files/geometrical_samples/v9/"
 mkpath(output_dir) 
 
 # Log the seed number in a text file
