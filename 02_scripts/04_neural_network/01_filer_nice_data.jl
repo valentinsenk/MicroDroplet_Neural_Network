@@ -5,7 +5,7 @@ using DelimitedFiles
 # Define the root directory of samples
 root_dir = "C:\\Users\\Senk\\Desktop\\Droplet_Tests_FEA\\01_neural_network_project\\01_data\\parameter_files"
 #samples = "selected_param_samples2\\v2"
-samples = "geometrical_samples\\v8-4"
+samples = "geometrical_samples\\v9"
 #samples = "all_param_samples\\v1"
 root_dir = joinpath(root_dir, samples)
 
@@ -16,7 +16,11 @@ root_dir = joinpath(root_dir, samples)
 #anual_exceptions = [11, 15, 30, 40, 55, 85, 87, 88, 93, 113, 121, 132, 133, 135, 139, 144, 145, 197, 202, 204, 228, 241, 251, 254] #for selected params2 v1
 #manual_exceptions = [10, 25, 39, 49, 57, 61, 63, 80, 93, 107, 122, 138, 171, 200, 203, 230, 239, 250, 261, 286, 291] #for selected params2 v2
 #manual_exceptions = [22, 64, 77, 119, 240] #for geom_v6
-manual_exceptions = [] #for geom_v7-1
+manual_exceptions = [11, 22, 23, 24, 25, 26, 32, 39, 41, 52, 55, 61, 64, 69, 71, 75, 80, 87, 91, 97,
+                        106, 122, 126, 128, 129, 131, 133, 138, 146, 162, 173, 178, 180, 183, 186, 198, 
+                        200, 206, 284, 244, 245, 264, 268, 269, 272, 273, 275, 279, 282, 289, 296, 298,
+                        315, 316, 323, 346, 353, 358, 359, 363, 365, 369, 372, 379, 381, 384, 390, 397, 398,
+                        400, 407, 409, 412, 418, 421, 425, 426, 428, 431, 433, 438, 439, 442, 444, 445, 449, 451, 453, 456, 460, 463, 465, 466, 467, 468, 471, 480, 484, 489, 491, 492, 493, 496, 498] #for geom_v9
 #### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
 
 l_resample_Xs = 150 #new resampled Xs length
@@ -199,7 +203,7 @@ println("Exception samples saved to: $plot_file")
 ### --- Visulize filtered data --- ###
 
 #define x_max threshold; filter out other
-x_max = 0.10
+x_max = 0.05
 
 
 # Initialize counters

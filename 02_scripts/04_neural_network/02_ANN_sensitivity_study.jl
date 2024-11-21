@@ -15,11 +15,11 @@ using FileIO
 using LinearAlgebra
 using Trapz
 
-#sample_versions = ["geometrical_samples\\v6"]
-sample_versions = ["mechanical_samples\\v4finer"]
+sample_versions = ["geometrical_samples\\v9"]
+#sample_versions = ["mechanical_samples\\v4finer"]
 #sample_versions = ["selected_param_samples2\\v1", "selected_param_samples2\\v2"]
 
-total_epochs = 100000
+total_epochs = 1000
 learning_rate = 0.001
 random_seed = 1234
 Random.seed!(random_seed) #set random seed for reproducibility (hyperparameter changing)
@@ -125,9 +125,9 @@ N_out = length(Xs)
 # This is the actual model
 model = Chain(
     Dense(N_inp => 4*N_inp, celu),
-    Dropout(0.2), # to reduce overfit
+    Dropout(0.4), # to reduce overfit
     Dense(4*N_inp => 4*N_inp, celu),
-    Dropout(0.2),
+    Dropout(0.4),
     Dense(4*N_inp => N_out)
 ) |> f64
 
@@ -345,11 +345,12 @@ n_cols = 4
 n_rows = ceil(Int, length(sorted_train_indices) / n_cols)
 
 # Create subplot layout for sorted training samples
-p_all_training_samples = plot(layout=grid(n_rows, n_cols), plot_title=range_text, plot_titlefontsize=6,
+p_all_training_samples = plot(layout=grid(n_rows, n_cols), plot_title=range_text,
+    plot_titlefontsize=6, size=(n_cols*400, n_rows*400),
     [plot(Xs, [model(data_training[idx][1]), data_training[idx][2]], 
     labels=["training predict" "fea truth"], 
     title="SAMPLE [original ID: $(original_ids_training[idx])]\n$(generate_param_string(idx, :training))", 
-    size=(n_cols*400, n_rows*400), titlefont=5, ylims=(0, 20)) for idx in sorted_train_indices]...)
+    titlefont=5, ylims=(0, 20)) for idx in sorted_train_indices]...)
 
 # Save and display
 savefig(joinpath(results_dir_ANN_run, "all_training.png"))
