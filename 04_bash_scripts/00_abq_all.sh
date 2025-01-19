@@ -34,7 +34,7 @@ start_model=$(date +%s)
 #fi
 
 # Run the Abaqus Python script to build the model
-/opt/abaqus/Commands/abq2024 cae noGUI=/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/02_scripts/02_preprocessing/01_build_model_v1.py
+/opt/abaqus/Commands/abq2024 cae noGUI=/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/02_scripts/02_preprocessing/01_build_model_v2.py
 
 # Wait for the Abaqus job to finish
 wait

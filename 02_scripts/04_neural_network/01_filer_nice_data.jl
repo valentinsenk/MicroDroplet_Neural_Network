@@ -20,7 +20,9 @@ manual_exceptions = [11, 22, 23, 24, 25, 26, 32, 39, 41, 52, 55, 61, 64, 69, 71,
                         106, 122, 126, 128, 129, 131, 133, 138, 146, 162, 173, 178, 180, 183, 186, 198, 
                         200, 206, 284, 244, 245, 264, 268, 269, 272, 273, 275, 279, 282, 289, 296, 298,
                         315, 316, 323, 346, 353, 358, 359, 363, 365, 369, 372, 379, 381, 384, 390, 397, 398,
-                        400, 407, 409, 412, 418, 421, 425, 426, 428, 431, 433, 438, 439, 442, 444, 445, 449, 451, 453, 456, 460, 463, 465, 466, 467, 468, 471, 480, 484, 489, 491, 492, 493, 496, 498] #for geom_v9
+                        400, 407, 409, 412, 418, 421, 425, 426, 428, 431, 433, 438, 439, 442, 444, 445, 449,
+                        451, 453, 456, 460, 463, 465, 466, 467, 468, 471, 480, 484, 489, 491, 492, 493, 496, 498] #for geom_v9
+#manual_exceptions = [34, 44, 68, 73, 94, 96, 104, 120, 125, 143, 147, 169, 177, 186, 213, 222, 228, 235, 236, 237, 242, 244, 253, 255, 259, 265, 272, 279, 288] #for geom_v9-1
 #### !!! MANUAL EXCEPTION OF SAMPLES !!! ###
 
 l_resample_Xs = 150 #new resampled Xs length
@@ -540,6 +542,8 @@ end
 # Save the plot
 plot_file_clean_cut = joinpath(results_dir, "07_Clean_samples_CUT_x_max.png")
 savefig(p_clean_cut, plot_file_clean_cut)
+plot_file_clean_cut = joinpath(results_dir, "07_Clean_samples_CUT_x_max.svg")
+savefig(p_clean_cut, plot_file_clean_cut)
 
 # Display the plot
 display(p_clean_cut)
@@ -590,7 +594,7 @@ println("Maximum stress statistics for original FEA samples saved to: $original_
 using Interpolations
 using SavitzkyGolay #to smooth out the linestyle
 
-window_size = 3  # Must be odd
+window_size = 3 # Must be odd
 polynomial_order = 1  # Must be less than window_size
 
 # Resample using linear interpolation
@@ -623,6 +627,8 @@ end
 display(p_clean_cut_resample)
 
 plot_file_clean_cut_re = joinpath(results_dir, "08_Final_input_ANN.png")
+savefig(p_clean_cut_resample, plot_file_clean_cut_re)
+plot_file_clean_cut_re = joinpath(results_dir, "08_Final_input_ANN.svg")
 savefig(p_clean_cut_resample, plot_file_clean_cut_re)
 
 ##################################
@@ -676,3 +682,105 @@ end
 # Example usage
 save_data_file = joinpath(results_dir, "clean_data.jld2")
 save_data_to_jld2(save_data_file, Xs, Ys, clean_params, indices_clean)
+
+
+
+##################################
+### Make some additional plots ###
+##################################
+
+# Find indices of the three lines closest to a given target
+function find_closest_indices(target, values, num_closest=3)
+    distances = abs.(values .- target)
+    sorted_indices = sortperm(distances)
+    return sorted_indices[1:num_closest]  # Return indices of the `num_closest` smallest distances
+end
+
+# Find indices of lines closest to statistical thresholds
+indices_closest_to_mean = find_closest_indices(original_mean_value, original_max_values, 7)
+indices_closest_to_mean_plus_sd = find_closest_indices(original_mean_value + original_std_dev, original_max_values, 7)
+indices_closest_to_mean_minus_sd = find_closest_indices(original_mean_value - original_std_dev, original_max_values, 7)
+indices_closest_to_min = find_closest_indices(original_min_value, original_max_values, 7)
+indices_closest_to_max = find_closest_indices(original_max_value, original_max_values, 7)
+
+# Print the sample numbers for reference
+println("Samples closest to Minimum:")
+println(indices_closest_to_min)
+
+println("Samples closest to Maximum:")
+println(indices_closest_to_max)
+
+println("Samples closest to Mean:")
+println(indices_closest_to_mean)
+
+println("Samples closest to Mean + SD:")
+println(indices_closest_to_mean_plus_sd)
+
+println("Samples closest to Mean - SD:")
+println(indices_closest_to_mean_minus_sd)
+
+# Create a plot for these specific lines
+p_closest_lines = plot(
+    title="Lines Closest to Min, Max, Mean, and ±1 SD (3 Each)",
+    xlabel="Displacement (mm)",
+    ylabel="mIFSS (N/mm²)",
+    size=(1200, 900),
+)
+
+# Define colors for the different groups of lines
+group_colors = [:purple, :orange, :blue, :green, :red]
+group_labels = ["Min", "Max", "Mean", "Mean + SD", "Mean - SD"]
+
+# Plot the three lines closest to the minimum
+for i in indices_closest_to_min
+    X = clean_XY_data[i].X
+    Y = clean_XY_data[i].Y
+    plot!(p_closest_lines, X, Y, label="Closest to Min (Sample $i)", linestyle=:solid, color=group_colors[1])
+end
+
+# Plot the three lines closest to the maximum
+for i in indices_closest_to_max
+    X = clean_XY_data[i].X
+    Y = clean_XY_data[i].Y
+    plot!(p_closest_lines, X, Y, label="Closest to Max (Sample $i)", linestyle=:dash, color=group_colors[2])
+end
+
+# Plot the three lines closest to the mean
+for i in indices_closest_to_mean
+    X = clean_XY_data[i].X
+    Y = clean_XY_data[i].Y
+    plot!(p_closest_lines, X, Y, label="Closest to Mean (Sample $i)", linestyle=:dot, color=group_colors[3])
+end
+
+# Plot the three lines closest to mean + 1 standard deviation
+for i in indices_closest_to_mean_plus_sd
+    X = clean_XY_data[i].X
+    Y = clean_XY_data[i].Y
+    plot!(p_closest_lines, X, Y, label="Closest to Mean + SD (Sample $i)", linestyle=:dashdot, color=group_colors[4])
+end
+
+# Plot the three lines closest to mean - 1 standard deviation
+for i in indices_closest_to_mean_minus_sd
+    X = clean_XY_data[i].X
+    Y = clean_XY_data[i].Y
+    plot!(p_closest_lines, X, Y, label="Closest to Mean - SD (Sample $i)", linestyle=:dashdotdot, color=group_colors[5])
+end
+
+hline!(p_closest_lines, [8.0], label="y = 8.0", color=:black, linestyle=:dash)
+hline!(p_closest_lines, [9.8], label="y = 9.8", color=:black, linestyle=:dash)
+hline!(p_closest_lines, [11.6], label="y = 11.6", color=:black, linestyle=:dash)
+
+hline!(p_closest_lines, [mean_value-std_dev], label="y = $(mean_value-std_dev)", color=:black, linestyle=:dot)
+hline!(p_closest_lines, [mean_value], label="y = $(mean_value)", color=:black, linestyle=:dot)
+hline!(p_closest_lines, [mean_value+std_dev], label="y = $(mean_value+std_dev)", color=:black, linestyle=:dot)
+
+# Save the plot
+plot_file_closest = joinpath(results_dir, "lines_closest_to_min_max_mean_and_sd_3_each.png")
+savefig(p_closest_lines, plot_file_closest)
+plot_file_closest = joinpath(results_dir, "lines_closest_to_min_max_mean_and_sd_3_each.svg")
+savefig(p_closest_lines, plot_file_closest)
+
+# Display the plot
+display(p_closest_lines)
+
+println("Plot of lines closest to Min, Max, Mean, and ±1 SD saved to: $plot_file_closest")

@@ -15,13 +15,13 @@ using FileIO
 using LinearAlgebra
 using Trapz
 
-sample_versions = ["geometrical_samples\\v9"]
+sample_versions = ["geometrical_samples\\v9-1"]
 #sample_versions = ["mechanical_samples\\v4finer"]
 #sample_versions = ["selected_param_samples2\\v1", "selected_param_samples2\\v2"]
 
-total_epochs = 1000
+total_epochs = 5000
 learning_rate = 0.001
-random_seed = 1234
+random_seed = 1111
 Random.seed!(random_seed) #set random seed for reproducibility (hyperparameter changing)
 
 

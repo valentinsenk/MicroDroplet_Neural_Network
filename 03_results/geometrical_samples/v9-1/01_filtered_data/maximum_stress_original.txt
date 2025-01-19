@@ -1,0 +1,14 @@
+Maximum Stress Summary Statistics for Original FEA Samples
+---------------------------------------------------------
+Total number of clean samples: 250
+
+Minimum value: 7.789943
+Maximum value: 12.281373
+Mean value: 10.341106552000001
+Standard deviation: 1.0118357978038477
+
+Quantiles:
+  5% Quantile: 8.48775315
+  25% Quantile: 9.72032575
+  75% Quantile: 11.069863999999999
+  95% Quantile: 11.839745200000001
