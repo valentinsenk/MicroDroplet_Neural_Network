@@ -9,7 +9,7 @@
 
 ####### variables #######
 python_script_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/02_scripts/03_postprocessing'
-root_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/geometrical_samples/v9'
+root_dir='/home/vsenk/Droplet_Tests_FEA/01_neural_network_project/01_data/parameter_files/new_mechanical_samples/v1'
 output_dir="${root_dir}/_compare_allresults"
 output_collage="${output_dir}/collage.png"
 ##########################
