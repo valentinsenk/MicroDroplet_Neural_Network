@@ -15,18 +15,20 @@ using FileIO
 using LinearAlgebra
 using Trapz
 
-sample_versions = ["geometrical_samples\\v9-1"]
+#sample_versions = ["geometrical_samples\\v6"]
 #sample_versions = ["mechanical_samples\\v4finer"]
 #sample_versions = ["selected_param_samples2\\v1", "selected_param_samples2\\v2"]
+sample_versions = ["new_mechanical_samples\\v1"]
 
-total_epochs = 5000
+total_epochs = 10000
 learning_rate = 0.001
-random_seed = 1111
+random_seed = 1234
 Random.seed!(random_seed) #set random seed for reproducibility (hyperparameter changing)
 
 
 # Define parameter names based on the sample type (for PLOTS)
-mech_params_names = ["GI", "GII", "t", "i_fric", "b_fric"]
+mech_params_names = ["GI", "GII", "tI", "tII", "i_fric", "b_fric"]
+#mech_params_names = ["GI", "GII", "t", "i_fric", "b_fric"]
 geom_params_names = ["fd", "D", "L/D", "θ", "ell/r", "φ", "bl_d"] # θ is contact angle; φ is fiber rotation
 #selected_params01_names = ["GII", "t", "fd", "D", "bl_d"]
 selected_params02_names = ["GII", "t", "fd", "ell/r", "bl_d"]
@@ -236,7 +238,8 @@ save_gradient = joinpath(results_dir_ANN_run, "gradient.png")
 # Plotting the loss
 p_loss_log = plot([losses_training, losses_validation], label=["training loss" "validation loss"], yscale=:log10, xlabel="epochs", ylabel="MSE", size=(1200, 900))
 vline!(p_loss_log, [best_epoch], label="Best Epoch", linestyle=:dash, color=:red)
-savefig(save_plot_loss_log)
+savefig(p_loss_log, save_plot_loss_log)
+savefig(p_loss_log, replace(save_plot_loss_log, ".png" => ".svg"))  # Additional SVG save
 display(p_loss_log)
 
 # Plotting the N worst approximations
@@ -246,8 +249,9 @@ p_worst = plot(layout=grid(2,3), plot_title=range_text, plot_titlefontsize=6,
     [plot(Xs, [model(data_test[idx][1]), data_test[idx][2]], 
     labels=["prediction" "truth"], 
     title="WORST SAMPLE [original ID: $(original_ids_test[idx])]\n$(generate_param_string(idx, :test))", size=(1200, 900),
-        titlefont=5, ylims=(0, 20)) for idx in n_max[1:6]]...)
+        titlefont=5, ylims=(0, 20), xticks=0:0.02:0.1, yticks=0:2:20) for idx in n_max[1:6]]...)
 savefig(p_worst, save_plot_worst)
+savefig(p_worst, replace(save_plot_worst, ".png" => ".svg"))  # Save as SVG
 display(p_worst)
 
 # Plotting the N best approximations
@@ -256,8 +260,9 @@ p_best = plot(layout=grid(2, 3), plot_title=range_text, plot_titlefontsize=6,
     [plot(Xs, [model(data_test[idx][1]), data_test[idx][2]], 
     labels=["prediction" "truth"], 
     title="BEST SAMPLE [original ID: $(original_ids_test[idx])]\n$(generate_param_string(idx, :test))", size=(1200, 900),
-        titlefont=5, ylims=(0, 20)) for idx in n_min[1:6]]...)
-savefig(save_plot_best)
+        titlefont=5, ylims=(0, 20), xticks=0:0.02:0.1, yticks=0:2:20) for idx in n_min[1:6]]...)
+savefig(p_best, save_plot_best)
+savefig(p_best, replace(save_plot_best, ".png" => ".svg"))  # Save as SVG
 display(p_best)
 
 # Plotting samples close to the median of all samples 
@@ -268,8 +273,9 @@ p_median = plot(layout=grid(2, 3), plot_title=range_text, plot_titlefontsize=6,
     [plot(Xs, [model(data_test[idx][1]), data_test[idx][2]], 
     labels=["prediction" "truth"], 
     title="MEDIAN SAMPLE [original ID: $(original_ids_test[idx])]\n$(generate_param_string(idx, :test))", size=(1200, 900),
-        titlefont=5, ylims=(0, 20)) for idx in n_middle]...)
-savefig(save_plot_median)
+        titlefont=5, ylims=(0, 20), xticks=0:0.02:0.1, yticks=0:2:20) for idx in n_middle]...)
+savefig(p_median, save_plot_median)
+savefig(p_median, replace(save_plot_median, ".png" => ".svg"))  # Save as SVG
 display(p_median)
 
 
@@ -282,7 +288,7 @@ dists = [[fit(Normal,[sens[s][i,pidx] for s in eachindex(sens)]) for i in 1:N_ou
 
 # Plot the gradient data
 colors = palette(:rainbow, N_inp)
-plt2 = plot(ylabel="Gradient")
+plt2 = plot(ylabel="Gradient", xticks=0:0.01:0.1)
 for (idx,v) in enumerate(param_names)
     # Compute quartile
     quant_map = hcat(quantile.(dists[idx],Ref([0.25, 0.75]))...)
@@ -296,19 +302,36 @@ end
 
 # Compute visualization of base values
 _base = reduce(hcat,base)
-qtly = quantile.(eachrow(_base),Ref([0.25,0.75]))
-_base_min = (x->x[1]).(qtly)
-_base_max = (x->x[2]).(qtly)
+qtly = quantile.(eachrow(_base), Ref([0.01, 0.05, 0.25, 0.75, 0.95, 0.99]))
+#_base_01 = (x -> x[1]).(qtly)  # 1% quantile
+_base_05 = (x -> x[2]).(qtly)  # 5% quantile
+_base_25 = (x -> x[3]).(qtly)  # 25% quantile
+_base_75 = (x -> x[4]).(qtly)  # 75% quantile
+_base_95 = (x -> x[5]).(qtly)  # 95% quantile
+#_base_99 = (x -> x[6]).(qtly)  # 99% quantile
+
 _base_mean = mean.(eachrow(_base))
 
 # Plot inner quartile range of base values
 colors_red = palette(:reds)
-plt1 = plot(Xs, _base_min, lw=0, fillrange=_base_max, alpha=0.5, color=colors_red[1], label=:none, ylabel="Function")
-plot!(plt1, Xs, _base_mean, color=colors_red[2], label=:none)
+plt1 = plot(Xs, _base_25, xticks=0:0.01:0.1, yticks=0:2:12, lw=0, fillrange=_base_75, alpha=0.5, color=colors_red[1], label=:none, ylabel="Function")
+plot!(plt1, Xs, _base_mean, color=colors_red[2], label="Mean")
+plot!(plt1, Xs, _base_25, lw=2, color=:black, linestyle=:dash, label="25% Quantile")
+plot!(plt1, Xs, _base_75, lw=2, color=:black, linestyle=:dash, label="75% Quantile")
+
+plot!(plt1, Xs, _base_05, lw=2, color=:gray, linestyle=:dot, label="5% Quantile")
+plot!(Xs, _base_05, lw=0, fillrange=_base_25, alpha=0.10, color=:black, label=:none)
+plot!(plt1, Xs, _base_95, lw=2, color=:gray, linestyle=:dot, label="95% Quantile")
+plot!(Xs, _base_75, lw=0, fillrange=_base_95, alpha=0.10, color=:black, label=:none)
+#plot!(plt1, Xs, _base_01, lw=2, color=:gray, linestyle=:dashdot, label="1% Quantile")
+#plot!(plt1, Xs, _base_99, lw=2, color=:gray, linestyle=:dashdot, label="99% Quantile")
+
+
 
 # Combine both plots and display
 p_gradient = plot(layout=grid(2,1), plt1, plt2, size=(1200, 900))
-savefig(save_gradient)
+savefig(p_gradient, save_gradient)
+savefig(p_gradient, replace(save_gradient, ".png" => ".svg"))
 display(p_gradient)
 
 
